@@ -1,0 +1,6 @@
+#preContent table {
+    border-collapse: collapse;
+}
+#preContent table td {
+    border: 1px solid #666; border-collapse: collapse;
+}
