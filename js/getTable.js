@@ -13,14 +13,21 @@ function getTable() {
 //     </table>
 // `
     console.log(tableStr)
-    chrome.storage.local.set({'table': tableStr}, function() {
-        console.log('缓存成功')
-    })
     tableStr = tableStr.replace(/src\=\"/ig, 'src="https:')
     tableStr = tableStr.replace(/href\=\"/ig, 'href="https:')
     tableStr = tableStr.replace(/___\w{5,5}/ig, '')
-    $('body').append(tableStr);
+    // $('body').append(tableStr);
     return tableStr
+}
+
+function getPageCount(preLastNum) {
+    let $pages = $('#sold_container ul.pagination >.pagination-item');
+    let last = $pages.last(), lastNum = parseInt(last.text());
+    if (lastNum > 1) {
+        $pages.last().click()
+    } else {
+        return lastNum
+    }
 }
 
 function htmlToJson(str) {
@@ -63,6 +70,16 @@ function htmlToJson(str) {
                 tableData.status = status_td.find('.text-mod__link').html()
                 tableData.pay = pay_td.find('.price-mod__price span').eq(1).html()
                 tableData.express = pay_td.find('.price-mod__price').next().find('>span').eq(1).html()
+                tableData.detailUrl = status_td.find("a:contains('详情')").attr('href')
+                // $.ajax({
+                //     type: 'get',
+                //     url: tableData.detailUrl,
+                //     success: (data) => {
+                //         console.log('detail',data)
+                //     }, error: (err) => {
+                //         console.log('err',err)
+                //     }
+                // })
                 tableList.push(tableData);
                 // console.log(tableData)
             })
@@ -70,12 +87,31 @@ function htmlToJson(str) {
     })
     // console.log(tableList)
     // $('#preContent').html(request.content)
+    chrome.storage.local.set({'table': tableList}, function() {
+        console.log('缓存成功')
+    })
     return tableList;
 }
 
+
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
+    $('#content').bind('DOMSubtreeModified', function(e) {
+        if (e.target.innerHTML.length > 0) {
+            // Content change handler
+        }
+    });
     // console.log(sender.tab ?"from a content script:" + sender.tab.url :"from the extension");
     // if (request.cmd == 'test') alert(request.value);
-    sendResponse(htmlToJson(getTable()));
+    switch (request.cmd) {
+        case 'createExcel':
+            sendResponse(htmlToJson(getTable()));
+            break;
+        case 'getPageCount':
+            sendResponse(getPageCount());
+            break;
+
+        default:
+            break;
+    }
 });
 

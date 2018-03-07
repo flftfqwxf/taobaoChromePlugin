@@ -5,8 +5,6 @@
         });
     }
 
-
-
 // executeScript's a function rather than a string
     function remex(tabId, func, callback) {
         chrome.tabs.executeScript(tabId, {code: '(' + func.toString() + ')()'}, callback);
@@ -48,14 +46,11 @@
     }
 
     $('#createExcelBtn').click(() => {
-       let bg = chrome.extension.getBackgroundPage();
-
-        sendMessageToContentScript({cmd: 'test', value: '你好，我是popup！'}, function(response) {
-            bg._openFileAndRun('preView',response);
-
+        let bg = chrome.extension.getBackgroundPage();
+        sendMessageToContentScript({cmd: 'createExcel'}, function(response) {
+            bg._openFileAndRun('preView', response);
             // console.log('来自content的回复：' + response);
             // exportToExcel(response, '报表')
-
         });
         // getStorage(function(items) {
         //     exportToExcel(items.table, '报表')
@@ -69,5 +64,15 @@
         //         })
         //     })
         // })
+    })
+    $('#getPageCount').click(() => {
+        chrome.storage.local.get((items) => {
+            console.log(items)
+            $('#pageCount').html('asdfsadf' + items)
+        })
+        sendMessageToContentScript({cmd: 'getPageCount'}, function(response) {
+            // console.log('来自content的回复：' + response);
+            // exportToExcel(response, '报表')
+        });
     })
 })(jQuery);
