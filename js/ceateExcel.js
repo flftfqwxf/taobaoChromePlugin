@@ -52,27 +52,23 @@
             // console.log('来自content的回复：' + response);
             // exportToExcel(response, '报表')
         });
-        // getStorage(function(items) {
-        //     exportToExcel(items.table, '报表')
-        // })
-        // console.log(chrome.extension.getURL('js/common/jquery-2.1.3.min.js'))
-        // getCurrentTabId(function(tabId) {
-        //     // windowContextRemex(tabId, getTable, function() {
-        //     // })
-        //     chrome.tabs.executeScript(tabId, {file: '/js/common/jquery-2.1.3.min.js'}, function() {
-        //         windowContextRemex(tabId, getTable, function() {
-        //         })
-        //     })
-        // })
+
     })
     $('#getPageCount').click(() => {
-        chrome.storage.local.get((items) => {
-            console.log(items)
-            $('#pageCount').html('asdfsadf' + items)
-        })
+        // chrome.storage.local.get((items) => {
+        //     console.log(items)
+        //     $('#pageCount').html('asdfsadf' + items)
+        // })
         sendMessageToContentScript({cmd: 'getPageCount'}, function(response) {
             // console.log('来自content的回复：' + response);
             // exportToExcel(response, '报表')
         });
     })
+    chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
+        if (request.cmd === 'loaded') {
+            let tableList = request.tableList;
+            $('#pageCount').html(tableList.length);
+            sendResponse(200)
+        }
+    });
 })(jQuery);

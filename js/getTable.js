@@ -12,7 +12,7 @@ function getTable() {
 //     ${tableStr}
 //     </table>
 // `
-    console.log(tableStr)
+//     console.log(tableStr)
     tableStr = tableStr.replace(/src\=\"/ig, 'src="https:')
     tableStr = tableStr.replace(/href\=\"/ig, 'href="https:')
     tableStr = tableStr.replace(/___\w{5,5}/ig, '')
@@ -20,13 +20,32 @@ function getTable() {
     return tableStr
 }
 
-function getPageCount(preLastNum) {
+function checkPageCount(preLastNum) {
     let $pages = $('#sold_container ul.pagination >.pagination-item');
     let last = $pages.last(), lastNum = parseInt(last.text());
     if (lastNum > 1) {
         $pages.last().click()
     } else {
         return lastNum
+    }
+}
+
+function pageGreaterThanOne() {
+    let $pages = $('#sold_container ul.pagination >.pagination-item');
+    let last = $pages.last(), lastNum = parseInt(last.text());
+    if (lastNum > 1) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
+function getPageElement() {
+    let pageWrap = $('div[class^="simple-pagination-mod__container"]');
+    let nextPage = pageWrap.find('button:last');
+    if (nextPage.attr('disabled')) {
+        return;
+    } else {
     }
 }
 
@@ -87,29 +106,95 @@ function htmlToJson(str) {
     })
     // console.log(tableList)
     // $('#preContent').html(request.content)
-    chrome.storage.local.set({'table': tableList}, function() {
-        console.log('缓存成功')
-    })
+    // chrome.storage.local.set({'table': tableList}, function() {
+    //     console.log('缓存成功')
+    // })
     return tableList;
 }
 
-
-chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
-    $('#content').bind('DOMSubtreeModified', function(e) {
-        if (e.target.innerHTML.length > 0) {
-            // Content change handler
+var observeDOM = (function() {
+    var MutationObserver = window.MutationObserver || window.WebKitMutationObserver,
+        eventListenerSupported = window.addEventListener;
+    return function(obj, callback) {
+        if (MutationObserver) {
+            // define a new observer
+            var obs = new MutationObserver(function(mutations, observer) {
+                if (mutations[0].type === 'attributes') {
+                    let isLoading = mutations[0].target.getAttribute('class').indexOf('hidden') === -1
+                    callback(isLoading);
+                }
+            });
+            // have the observer observe foo for changes in children
+            obs.observe(obj, {childList: true, subtree: true, attributes: true});
+            return obs;
         }
-    });
+        else if (eventListenerSupported) {
+            obj.addEventListener('DOMNodeInserted', callback, false);
+            obj.addEventListener('DOMNodeRemoved', callback, false);
+        }
+    };
+})();
+
+function getNextData() {
+    let pageWrap = $('div[class^="simple-pagination-mod__container"]');
+    let nextPage = pageWrap.find('button:last');
+    if (nextPage.attr('disabled')) {
+        chrome.runtime.sendMessage({cmd: 'loaded', tableList: window.tableList}, function(status) {
+            if (status === 200) {
+                console.log('获取完成');
+                console.log(window.tableList);
+            } else {
+                console.log(status);
+            }
+        });
+        //取消对dom节点的监控
+        OBS.disconnect();
+        return;
+    } else {
+        nextPage.click();
+    }
+}
+
+let pageIndex = 0;
+
+function getAllPageData() {
+    pageIndex = 0;
+    window.tableList = htmlToJson(getTable());
+    console.log(`获取第${++pageIndex}页数据-------------------`)
+    getNextData();
+}
+
+let isInitLoadingEvent = false;
+let OBS = null;
+// Observe a specific DOM element:
+chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
+    // console.log($('#sold_container >div >div:last')[0].innerHTML);
+    if (!isInitLoadingEvent) {
+        isInitLoadingEvent = true;
+        OBS = observeDOM($('#sold_container >div >div:last')[0], function(isLoading) {
+            if (isLoading) {
+                console.log('page is loading');
+            } else {
+                console.log('page is loaded');
+                setTimeout(() => {
+                    let currentPageData = htmlToJson(getTable());
+                    console.log(`获取第${++pageIndex}页数据-------------------`)
+                    console.log(currentPageData);
+                    window.tableList = window.tableList.concat(currentPageData);
+                    getNextData();
+                }, 300);
+            }
+        });
+    }
     // console.log(sender.tab ?"from a content script:" + sender.tab.url :"from the extension");
     // if (request.cmd == 'test') alert(request.value);
     switch (request.cmd) {
         case 'createExcel':
-            sendResponse(htmlToJson(getTable()));
+            sendResponse(window.tableList);
             break;
         case 'getPageCount':
-            sendResponse(getPageCount());
+            getAllPageData();
             break;
-
         default:
             break;
     }
