@@ -139,20 +139,56 @@ function getNextData() {
     let pageWrap = $('div[class^="simple-pagination-mod__container"]');
     let nextPage = pageWrap.find('button:last');
     if (nextPage.attr('disabled')) {
-        chrome.runtime.sendMessage({cmd: 'loaded', tableList: window.tableList}, function(status) {
-            if (status === 200) {
-                console.log('获取完成');
-                console.log(window.tableList);
-            } else {
-                console.log(status);
-            }
-        });
-        //取消对dom节点的监控
-        OBS.disconnect();
+        getOrderDetails(function() {
+            chrome.runtime.sendMessage({cmd: 'loaded', tableList: window.tableList}, function(status) {
+                if (status === 200) {
+                    console.log('获取完成');
+                    console.log(window.tableList);
+                } else {
+                    console.log(status);
+                }
+            });
+            //取消对dom节点的监控
+            OBS.disconnect();
+        })
         return;
     } else {
         nextPage.click();
     }
+}
+
+function getOrderDetails(callback) {
+    var deferreds = [];
+    window.tableList.forEach((item) => {
+        deferreds.push($.ajax({
+            type: 'get',
+            url: item.detailUrl,
+            success: (pagestr) => {
+                let detailPage = $(pagestr);
+                let reg =/var data = JSON.parse\('.+\);/ig;
+
+                let dataJsString=pagestr.match(reg)
+                let dataFun = `
+                    ${dataJsString}
+                    return data;
+                `
+                item.detailInfo = new Function(dataFun)();
+                // is object a function?
+
+
+                console.log('detail', item.detailInfo)
+            }, error: (err) => {
+                console.log('err', err)
+            }
+        }))
+    })
+    $.when(...deferreds).done(function() {
+        console.log('获取详情完成')
+        callback();
+        // $("div").append("<p>All done!</p>");
+    }).fail((error) => {
+        console.log('错误信息：' + error.toString())
+    })
 }
 
 let pageIndex = 0;
