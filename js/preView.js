@@ -1,28 +1,58 @@
 let content = ''
 let columns = [
-    {"data": "order_num", title: '订单号'},
-    {"data": "order_time", title: '订单日期'},
-    {"data": "img", title: '图片',},
-    {"data": "href", title: '产品地址'},
-    {"data": "pro_name", title: '产品名称'},
-    {"data": "color", title: '颜色分类'},
-    {"data": "price", title: '原价'},
-    {"data": "num", title: '购买数量'},
-    {"data": "wangwang", title: '旺旺'},
-    {"data": "status", title: '状态'},
-    {"data": "pay", title: '实付'},
-    {"data": "express", title: '快递'}]
+    {"data": "order_index", "name": "order_index", title: 'ID'},
+    {"data": "order_num", "name": "order_num", title: '订单号'},
+    {"data": "order_time", "name": "order_time", title: '订单日期'},
+    {"data": "img", "name": "img", title: '图片'},
+    // {"data": "href","name": "href", title: '产品地址'},
+    {"data": "pro_name", "name": "pro_name", title: '产品名称'},
+    {"data": "color", "name": "color", title: '颜色分类'},
+    {"data": "num", "name": "num", title: '购买数量'},
+    {"data": "wangwang", "name": "wangwang", title: '旺旺'},
+    {"data": "status", "name": "status", title: '状态'},
+    {"data": "price", "name": "price", title: '原价'},
+    {"data": "pay", "name": "pay", title: '实付'},
+    {"data": "express", "name": "express", title: '快递'},
+    {"data": "purchasePrice", "name": "purchasePrice", title: '进价'},
+    {"data": "purchaseExpress", "name": "purchaseExpress", title: '进价快递费'},
+    {"data": "purchaseBox", "name": "purchaseBox", title: '纸箱费'},
+    {"data": "profit", "name": "profit", title: '利润'},
+]
+
+function getCellVals(tdIndexs) {
+    let returnVal = {}, val;
+    alert($('#example >tbody >tr').length)
+    $('#example >tbody >tr').each((ids, item) => {
+        if ($.isArray(tdIndexs)) {
+            tdIndexs.map(tdItem => {
+                if (!returnVal[tdItem.key]) {
+                    returnVal[tdItem.key] = 0;
+                }
+                let td = $(item).find('td').eq(tdItem.ids);
+                if (td.is(":visible")) {
+                    returnVal[tdItem.key] += parseFloat($(item).find('td').eq(tdItem.ids).html())
+                }
+            })
+        }
+    })
+    return returnVal;
+}
+
 chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     console.log(sender.tab ? "from a content script:" + sender.tab.url : "from the extension");
 // if (request.cmd == 'test') alert(request.value);
+    var table;
+    try {
+        table.destroy();
+    } catch (e) {
+    }
     setTimeout(() => {
         let data = request.content
         console.log(JSON.stringify(data));
         $('#example').html('')
-        var table = $('#example').DataTable({
+        table = $('#example').DataTable({
             destroy: true,
             columns: columns,
-            "order": [[0, "desc"]],
             "iDisplayLength": 100,
             "columnDefs": [
                 {
@@ -32,24 +62,26 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
                     "render": function(data, type, row) {
                         return `<img src="${data}" width="50" />`;
                     },
-                    "targets": 2
+                    "targets": 3
                 },
-                {
-                    // The `data` parameter refers to the data for the cell (defined by the
-                    // `data` option, which defaults to the column being worked with, in
-                    // this case `data: 0`.
-                    "render": function(data, type, row) {
-                        return `<img src="${data}" width="50" />`;
-                    },
-                    "targets": 2
-                },
-                {"visible": false, "targets": [3]}
+                // {"visible": false, "targets": [4]}
             ],
             data: data,
-            rowsGroup: [// Always the array (!) of the column-selectors in specified order to which rows groupping is applied
-                // (column-selector could be any of specified in https://datatables.net/reference/type/column-selector)
-                0, 1, 8, 9, 10, 11
-            ],
+            rowsGroup:
+                [// Always the array (!) of the column-selectors in specified order to which rows groupping is applied
+                    // (column-selector could be any of specified in https://datatables.net/reference/type/column-selector)
+                    'order_index:name',
+                    'order_num:name',
+                    'order_time:name',
+                    'wangwang:name',
+                    'express:name',
+                    'pay:name',
+                    'purchaseExpress:name',
+                    'purchaseBox:name',
+                    'status:name',
+                    'profit:name',
+                    // 0, 1, 2, 7,8, 10, 11, 12,13
+                ],
             dom: 'Bfrtip',
             buttons: [{
                 extend: 'excelHtml5',
@@ -91,8 +123,32 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
                     }
                     console.log(sheet)
                 }
-            }]
+            }],
         });
+        setTimeout(()=>{
+            let total = getCellVals([
+                {ids: 9, key: 'totalPrice'},
+                {ids: 10, key: 'totalPay'},
+                {ids: 12, key: 'totalPurchasePrice'},
+                {ids: 13, key: 'totalPurchaseExpress'},
+                {ids: 14, key: 'totalPurchaseBox'},
+                {ids: 15, key: 'totalProfit'},
+            ])
+            $('#example').append(`
+                       <tfoot id="footer">
+                            <tr>
+                                <th colspan="9" style="text-align:right">合计：</th>
+                                <th>${total.totalPrice}</th>
+                                <th>${total.totalPay}</th>
+                                 <th colspan="2">${total.totalPurchasePrice}</th>
+                                <th>${total.totalPurchaseExpress}</th>
+                                <th>${total.totalPurchaseBox}</th>
+                                <th>${total.totalProfit}</th>
+                            </tr>
+                        </tfoot>
+                `)
+        },300)
+        // table.order([[0, 'desc']]).draw();
     }, 300)
 });
 // var data = [
