@@ -166,10 +166,15 @@ function getNextData() {
             });
             for (var tempItem in tempList) {
                 if (tempList[tempItem].group) {
-                    tempList[tempItem].ids.map(item => {
+                    tempList[tempItem].ids.map((item,ids) => {
                         let profit = window.tableList[item].pay - tempList[tempItem].groupPurchasePrice;
                         console.log('profit:'+profit);
-                        window.tableList[item].profit = profit;
+                        if (ids ===0) {
+                            window.tableList[item].profit = profit;
+                        }else {
+                            window.tableList[item].profit = 0;
+
+                        }
                     })
                 }
             }
