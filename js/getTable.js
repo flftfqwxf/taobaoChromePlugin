@@ -1,18 +1,10 @@
-// document.body.style.backgroundColor="red"
-// console.log($("btn:contains('下一页')"))
-// $("btn:contains('下一页')").click()
-// $('body').css('backgroundColor','red')
+
 function getTable() {
     let tableStr = ""
     $('.trade-order-main').each((ids, item) => {
         tableStr += $(item).html()
     });
-//     let tb = `
-//     <table id="J_excel_table">
-//     ${tableStr}
-//     </table>
-// `
-//     console.log(tableStr)
+
     tableStr = tableStr.replace(/src\=\"/ig, 'src="https:')
     tableStr = tableStr.replace(/href\=\"/ig, 'href="https:')
     tableStr = tableStr.replace(/___\w{5,5}/ig, '')
@@ -20,34 +12,6 @@ function getTable() {
     return tableStr
 }
 
-function checkPageCount(preLastNum) {
-    let $pages = $('#sold_container ul.pagination >.pagination-item');
-    let last = $pages.last(), lastNum = parseInt(last.text());
-    if (lastNum > 1) {
-        $pages.last().click()
-    } else {
-        return lastNum
-    }
-}
-
-function pageGreaterThanOne() {
-    let $pages = $('#sold_container ul.pagination >.pagination-item');
-    let last = $pages.last(), lastNum = parseInt(last.text());
-    if (lastNum > 1) {
-        return true;
-    } else {
-        return false;
-    }
-}
-
-function getPageElement() {
-    let pageWrap = $('div[class^="simple-pagination-mod__container"]');
-    let nextPage = pageWrap.find('button:last');
-    if (nextPage.attr('disabled')) {
-        return;
-    } else {
-    }
-}
 
 let ORDER_INDEX = 0;
 
