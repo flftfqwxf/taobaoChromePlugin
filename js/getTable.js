@@ -87,15 +87,15 @@ function htmlToJson(str) {
                 tableData.href = lnk.attr('href')
                 tableData.pro_name = lnk.find('span').eq(1).html()
                 tableData.color = pro_info_ele.find('.production-mod__sku-item >span').eq(2).html()
-                tableData.price = price_td.find('.price-mod__price >p >span').eq(1).html()
-                tableData.num = num_td.find('p').html()
+                tableData.price = parseFloat(price_td.find('.price-mod__price >p >span').eq(1).html())
+                tableData.num = parseFloat(num_td.find('p').html())
                 tableData.wangwang = wangwang_td.find('.buyer-mod__buyer >p').eq(0).find('a').html()
                 tableData.status = status_td.find('.text-mod__link').html()
-                tableData.pay = pay_td.find('.price-mod__price span').eq(1).html()
+                tableData.pay = parseFloat(pay_td.find('.price-mod__price span').eq(1).html().trim())
                 tableData.express = pay_td.find('.price-mod__price').next().find('>span').eq(1).html()
                 tableData.detailUrl = status_td.find("a:contains('详情')").attr('href')
                 //进价
-                tableData.purchasePrice = tableData.price / 2;
+                tableData.purchasePrice = parseFloat(tableData.price / 2);
                 //进价快递费
                 tableData.purchaseExpress = 10;
                 //纸箱

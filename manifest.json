@@ -37,6 +37,8 @@
       "run_at": "document_end"
     }
   ],
+  "content_security_policy": "script-src 'self' 'unsafe-eval'; object-src 'self'",
+
   // 权限申请
   "permissions": [
     "declarativeContent",
