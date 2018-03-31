@@ -1,5 +1,3 @@
-
-
 function getTable() {
     let tableStr = ""
     $('.trade-order-main').each((ids, item) => {
@@ -50,8 +48,9 @@ function htmlToJson(str) {
                 tableData.href = lnk.attr('href')
                 tableData.pro_name = lnk.find('span').eq(1).html()
                 tableData.color = pro_info_ele.find('.production-mod__sku-item >span').eq(2).html();
-                tableData.product_num = tableData.color.match(/\d{5,}/) || tableData.pro_name.match(/\d{5,}/) || '-';
-                tableData.product_num=tableData.product_num[0];
+                tableData.product_num = tableData.color ? tableData.color.match(/\d{5,}/) || tableData.pro_name.match(/\d{5,}/) || '-'
+                    : '-';
+                tableData.product_num = tableData.product_num[0];
                 tableData.price = parseFloat(price_td.find('.price-mod__price >p >span').eq(1).html())
                 tableData.num = parseFloat(num_td.find('p').html())
                 tableData.wangwang = wangwang_td.find('.buyer-mod__buyer >p').eq(0).find('a').html()
@@ -142,7 +141,7 @@ function getNextData() {
                     })
                 }
             }
-            chrome.runtime.sendMessage({cmd: 'loaded', tableList: window.tableList}, function(status) {
+            chrome.runtime.sendMessage({cmd: 'loaded', tableList: window.tableList,taobaoFilters: window.taobaoFilters}, function(status) {
                 if (status === 200) {
                     console.log('获取完成');
                     console.log(window.tableList);
@@ -467,9 +466,11 @@ let pageIndex = 0;
 
 function getAllPageData() {
     pageIndex = 0;
-    window.tableList = htmlToJson(getTable());
-    console.log(`获取第${++pageIndex}页数据-------------------`)
-    getNextData();
+    $('button:contains("搜索订单")').click();
+    window.tableList = [];
+    // window.tableList = htmlToJson(getTable());
+    // console.log(`获取第${++pageIndex}页数据-------------------`)
+    // getNextData();
 }
 
 let isInitLoadingEvent = false;
@@ -479,44 +480,65 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     //每次将索引设为0
     ORDER_INDEX = 0;
     // console.log($('#sold_container >div >div:last')[0].innerHTML);
-    if (!isInitLoadingEvent) {
-        isInitLoadingEvent = true;
-        OBS = observeDOM($('#sold_container >div >div:last')[0], function(isLoading) {
-            if (isLoading) {
-                console.log('page is loading');
-            } else {
-                console.log('page is loaded');
-                setTimeout(() => {
-                    let currentPageData = htmlToJson(getTable());
-                    console.log(`获取第${++pageIndex}页数据-------------------`)
-                    console.log(currentPageData);
-                    window.tableList = window.tableList.concat(currentPageData);
-                    getNextData();
-                }, 300);
-            }
-        });
-    }
-    // let startDate=$('input[placeholder="请选择时间范围起始"]'),
-    //     endDate=$('input[placeholder="请选择时间范围结束"]'),
-    //     product_id =$('#auctionId'),
-    //     itemName =$('#itemName'),
-    //     buyerNick =$('#buyerNick'),
-    //     buyerNick =$('#buyerNick'),
-    //     buyerNick =$('#buyerNick'),
-    //     buyerNick =$('#buyerNick'),
-    //     buyerNick =$('#buyerNick'),
+    // if (!isInitLoadingEvent) {
+    isInitLoadingEvent = true;
+    OBS = observeDOM($('#sold_container >div >div:last')[0], function(isLoading) {
+        if (isLoading) {
+            console.log('page is loading');
+        } else {
+            console.log('page is loaded');
+            setTimeout(() => {
+                let currentPageData = htmlToJson(getTable());
+                console.log(`获取第${++pageIndex}页数据-------------------`)
+                console.log(currentPageData);
+                window.tableList = window.tableList.concat(currentPageData);
+                getNextData();
+            }, 300);
+        }
+    });
+    // }
     // console.log(sender.tab ?"from a content script:" + sender.tab.url :"from the extension");
     // if (request.cmd == 'test') alert(request.value);
     switch (request.cmd) {
         case 'createExcel':
-            sendResponse(window.tableList);
+            sendResponse({
+                tableList: window.tableList,
+                taobaoFilters: window.taobaoFilters
+            });
             break;
         case 'getPageCount':
+            window.taobaoFilters = getFilterStatus();
             getAllPageData();
             break;
         default:
             break;
     }
 });
+
+function getFilterStatus() {
+    let tabsWrap = $('#sold_container div[class*="tabs-mod__container"]'),
+        searchForm = $('#sold_container form:first');
+    let filter = {
+        product_id: {key: '商品ID', val: $('#auctionId').val().trim(), defaultValue: ''},
+        itemName: {key: '宝贝名称', val: $('#itemName').val().trim(), defaultValue: ''},
+        startDate: {key: '开始时间', val: $('input[placeholder="请选择时间范围起始"]').val().trim(), defaultValue: ''},
+        endDate: {key: '结束时间', val: $('input[placeholder="请选择时间范围结束"]').val().trim(), defaultValue: ''},
+        buyerNick: {key: '买家昵称', val: $('#buyerNick').val().trim(), defaultValue: ''},
+        evaluateStatus: {key: '评价状态', val: searchForm.find('label:contains("评价状态:")').next('div').text(), defaultValue: '全部'},
+        postStatus: {key: '物流服务', val: searchForm.find('label:contains("物流服务:")').next('div').text(), defaultValue: '全部'},
+        afterSalesStatus: {key: '售后服务', val: searchForm.find('label:contains("售后服务:")').next('div').text(), defaultValue: '全部'},
+        transactionTypeStatus: {key: '交易类型', val: searchForm.find('label:contains("交易类型:")').next('div').text(), defaultValue: '所有类型'},
+        orderTypeStatus: {key: '订单类型', val: searchForm.find('label:contains("订单类型:")').next('div').text(), defaultValue: '全部'},
+        preSalesStatus: {key: '预售状态', val: searchForm.find('label:contains("预售状态:")').next('div').text(), defaultValue: '全部'},
+        currentTab: {key: '当前TAB', val: tabsWrap.find('div[class*="tabs-mod__selected"] >span:first').text(), defaultValue: '全部'},
+    }
+    let returnFilter = []
+    for (var item in filter) {
+        if (filter[item].val !== filter[item].defaultValue) {
+            returnFilter.push(filter[item].key + ':' + filter[item].val)
+        }
+    }
+    return returnFilter;
+}
 
 

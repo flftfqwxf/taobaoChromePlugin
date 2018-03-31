@@ -23,11 +23,11 @@
   // 需要直接注入页面的JS
   "content_scripts": [
     {
-      //"matches": ["http://*/*", "https://*/*"],
+      "matches": ["http://*.taobao.com/*", "https://*.taobao.com/*"],
       // "<all_urls>" 表示匹配所有地址
-      "matches": [
-        "<all_urls>"
-      ],
+//      "matches": [
+//        "<all_urls>"
+//      ],
       // 多个JS按顺序注入
       "js": [
         "/js/common/jquery-2.1.3.min.js",

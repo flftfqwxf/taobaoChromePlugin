@@ -68,6 +68,8 @@
         if (request.cmd === 'loaded') {
             let tableList = request.tableList;
             $('#pageCount').html(tableList.length);
+            let filters=request.taobaoFilters;
+            $('.filter_wrap').html(filters.join('<br>'));
             sendResponse(200)
         }
     });
