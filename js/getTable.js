@@ -1,17 +1,16 @@
 
+
 function getTable() {
     let tableStr = ""
     $('.trade-order-main').each((ids, item) => {
         tableStr += $(item).html()
     });
-
     tableStr = tableStr.replace(/src\=\"/ig, 'src="https:')
     tableStr = tableStr.replace(/href\=\"/ig, 'href="https:')
     tableStr = tableStr.replace(/___\w{5,5}/ig, '')
     // $('body').append(tableStr);
     return tableStr
 }
-
 
 let ORDER_INDEX = 0;
 
@@ -50,7 +49,9 @@ function htmlToJson(str) {
                 let lnk = pro_info_ele.find('a').eq(0)
                 tableData.href = lnk.attr('href')
                 tableData.pro_name = lnk.find('span').eq(1).html()
-                tableData.color = pro_info_ele.find('.production-mod__sku-item >span').eq(2).html()
+                tableData.color = pro_info_ele.find('.production-mod__sku-item >span').eq(2).html();
+                tableData.product_num = tableData.color.match(/\d{5,}/) || tableData.pro_name.match(/\d{5,}/) || '-';
+                tableData.product_num=tableData.product_num[0];
                 tableData.price = parseFloat(price_td.find('.price-mod__price >p >span').eq(1).html())
                 tableData.num = parseFloat(num_td.find('p').html())
                 tableData.wangwang = wangwang_td.find('.buyer-mod__buyer >p').eq(0).find('a').html()
@@ -123,26 +124,24 @@ function getNextData() {
                     tempList[item.order_num].group = true;
                     tempList[item.order_num].ids.push(ids)
                 } else {
-                    tempList[item.order_num]={};
+                    tempList[item.order_num] = {};
                     tempList[item.order_num].groupPurchasePrice = item.purchasePrice + item.purchaseExpress + item.purchaseBox
                     tempList[item.order_num].ids = [ids];
                 }
             });
             for (var tempItem in tempList) {
                 if (tempList[tempItem].group) {
-                    tempList[tempItem].ids.map((item,ids) => {
+                    tempList[tempItem].ids.map((item, ids) => {
                         let profit = window.tableList[item].pay - tempList[tempItem].groupPurchasePrice;
-                        console.log('profit:'+profit);
-                        if (ids ===0) {
+                        console.log('profit:' + profit);
+                        if (ids === 0) {
                             window.tableList[item].profit = profit;
-                        }else {
+                        } else {
                             window.tableList[item].profit = 0;
-
                         }
                     })
                 }
             }
-
             chrome.runtime.sendMessage({cmd: 'loaded', tableList: window.tableList}, function(status) {
                 if (status === 200) {
                     console.log('获取完成');
@@ -497,6 +496,15 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
             }
         });
     }
+    // let startDate=$('input[placeholder="请选择时间范围起始"]'),
+    //     endDate=$('input[placeholder="请选择时间范围结束"]'),
+    //     product_id =$('#auctionId'),
+    //     itemName =$('#itemName'),
+    //     buyerNick =$('#buyerNick'),
+    //     buyerNick =$('#buyerNick'),
+    //     buyerNick =$('#buyerNick'),
+    //     buyerNick =$('#buyerNick'),
+    //     buyerNick =$('#buyerNick'),
     // console.log(sender.tab ?"from a content script:" + sender.tab.url :"from the extension");
     // if (request.cmd == 'test') alert(request.value);
     switch (request.cmd) {
@@ -510,4 +518,5 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
             break;
     }
 });
+
 
