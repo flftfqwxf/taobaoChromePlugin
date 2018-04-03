@@ -83,7 +83,7 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
 //     } catch (e) {
 //     }
     setTimeout(() => {
-        let data = request.content
+        let data = request.content.tableList
         $('#downExcel').off().on('click', () => {
             exportToExcel(data)
         })
