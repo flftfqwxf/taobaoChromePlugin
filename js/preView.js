@@ -138,6 +138,7 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
             });
             setTotal()
         }
+        uploadExcel();
         // table.order([[0, 'desc']]).draw();
     }, 300)
 });
@@ -336,3 +337,63 @@ function getImg(url) {
     })
 }
 
+function handleFile(e) {
+}
+
+// if(opts.file && opts.file.addEventListener) opts.file.addEventListener('change', handleFile, false);
+function uploadExcel() {
+    $('#in_product').change(function() {
+        var reader = new FileReader();
+        reader.onload = function() {
+            var arrayBuffer = this.result,
+                array = new Int8Array(arrayBuffer);
+            var wb2 = new ExcelJS.Workbook();
+            wb2.xlsx.load(array)
+                .then(function(wb2) {
+                    let dataArray = changeRowsToDict(wb2.getWorksheet(1));
+                    console.log(JSON.stringify(dataArray));
+                });
+        }
+        reader.readAsArrayBuffer(this.files[0]);
+    })
+}
+/* 将所有的行数据转换为json */
+function changeRowsToDict(worksheet){
+    let dataArray = [];
+    let keys = [];
+    worksheet.eachRow(function(row, rowNumber) {
+        if(rowNumber == 1){
+            keys = row.values;
+        }
+        else{
+            // method1  ===============
+            // let rowDict = cellValueToDict(keys, row.values);
+            // dataArray.push(rowDict);
+            // method2  ===============
+            let rowDict = cellValueToDict2(keys, row);
+            dataArray.push(rowDict);
+        }
+    });
+    return dataArray;
+}
+
+/* keys: {id,name,phone}, rowValue：每一行的值数组, 执行次数3次 */
+function cellValueToDict(keys,rowValue){
+    let rowDict = {};
+    keys.forEach((value,index)=>{
+        rowDict[value] = rowValue[index];
+    });
+    return rowDict;
+}
+
+/* keys: {id,name,phone}, rowValue：每一行的值数组， 执行次数3次 */
+function cellValueToDict2(keys,row){
+    let data = {};
+    row.eachCell(function(cell, colNumber){
+        var value = cell.value;
+        if(typeof value == "object") value = value.text;
+        data[keys[colNumber]]  = value;
+    });
+    return data;
+}
+uploadExcel()
