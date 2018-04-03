@@ -47,7 +47,8 @@ function htmlToJson(str) {
                 let lnk = pro_info_ele.find('a').eq(0)
                 tableData.href = lnk.attr('href')
                 tableData.pro_name = lnk.find('span').eq(1).html()
-                tableData.color = pro_info_ele.find('.production-mod__sku-item >span').eq(2).html();
+                tableData.color = pro_info_ele.find('.production-mod__sku-item >span').eq(2).html()
+                tableData.color = tableData.color || '-';
                 tableData.product_num = tableData.color ? tableData.color.match(/\d{5,}/) || tableData.pro_name.match(/\d{5,}/) || '-'
                     : '-';
                 tableData.product_num = tableData.product_num[0];
@@ -115,44 +116,49 @@ function getNextData() {
     let pageWrap = $('div[class^="simple-pagination-mod__container"]');
     let nextPage = pageWrap.find('button:last');
     if (nextPage.attr('disabled')) {
-        getOrderDetails(function() {
-            let tempList = {}
-            window.tableList.map((item, ids) => {
-                if (tempList[item.order_num]) {
-                    tempList[item.order_num].groupPurchasePrice += item.purchasePrice;
-                    tempList[item.order_num].group = true;
-                    tempList[item.order_num].ids.push(ids)
-                } else {
-                    tempList[item.order_num] = {};
-                    tempList[item.order_num].groupPurchasePrice = item.purchasePrice + item.purchaseExpress + item.purchaseBox
-                    tempList[item.order_num].ids = [ids];
+        let showMoreBtn = $('button:contains("显示更多页码")');
+        if (showMoreBtn.length === 1) {
+            showMoreBtn.click()
+        } else {
+            getOrderDetails(function() {
+                let tempList = {}
+                window.tableList.map((item, ids) => {
+                    if (tempList[item.order_num]) {
+                        tempList[item.order_num].groupPurchasePrice += item.purchasePrice;
+                        tempList[item.order_num].group = true;
+                        tempList[item.order_num].ids.push(ids)
+                    } else {
+                        tempList[item.order_num] = {};
+                        tempList[item.order_num].groupPurchasePrice = item.purchasePrice + item.purchaseExpress + item.purchaseBox
+                        tempList[item.order_num].ids = [ids];
+                    }
+                });
+                for (var tempItem in tempList) {
+                    if (tempList[tempItem].group) {
+                        tempList[tempItem].ids.map((item, ids) => {
+                            let profit = window.tableList[item].pay - tempList[tempItem].groupPurchasePrice;
+                            console.log('profit:' + profit);
+                            if (ids === 0) {
+                                window.tableList[item].profit = profit;
+                            } else {
+                                window.tableList[item].profit = 0;
+                            }
+                        })
+                    }
                 }
-            });
-            for (var tempItem in tempList) {
-                if (tempList[tempItem].group) {
-                    tempList[tempItem].ids.map((item, ids) => {
-                        let profit = window.tableList[item].pay - tempList[tempItem].groupPurchasePrice;
-                        console.log('profit:' + profit);
-                        if (ids === 0) {
-                            window.tableList[item].profit = profit;
-                        } else {
-                            window.tableList[item].profit = 0;
-                        }
-                    })
-                }
-            }
-            chrome.runtime.sendMessage({cmd: 'loaded', tableList: window.tableList,taobaoFilters: window.taobaoFilters}, function(status) {
-                if (status === 200) {
-                    console.log('获取完成');
-                    console.log(window.tableList);
-                } else {
-                    console.log(status);
-                }
-            });
-            //取消对dom节点的监控
-            OBS.disconnect();
-        })
-        return;
+                chrome.runtime.sendMessage({cmd: 'loaded', tableList: window.tableList, taobaoFilters: window.taobaoFilters}, function(status) {
+                    if (status === 200) {
+                        console.log('获取完成');
+                        console.log(window.tableList);
+                    } else {
+                        console.log(status);
+                    }
+                });
+                //取消对dom节点的监控
+                OBS.disconnect();
+            })
+            return;
+        }
     } else {
         nextPage.click();
     }
@@ -480,23 +486,10 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
     //每次将索引设为0
     ORDER_INDEX = 0;
     // console.log($('#sold_container >div >div:last')[0].innerHTML);
-    // if (!isInitLoadingEvent) {
+    if (!isInitLoadingEvent) {
     isInitLoadingEvent = true;
-    OBS = observeDOM($('#sold_container >div >div:last')[0], function(isLoading) {
-        if (isLoading) {
-            console.log('page is loading');
-        } else {
-            console.log('page is loaded');
-            setTimeout(() => {
-                let currentPageData = htmlToJson(getTable());
-                console.log(`获取第${++pageIndex}页数据-------------------`)
-                console.log(currentPageData);
-                window.tableList = window.tableList.concat(currentPageData);
-                getNextData();
-            }, 300);
-        }
-    });
-    // }
+
+    }
     // console.log(sender.tab ?"from a content script:" + sender.tab.url :"from the extension");
     // if (request.cmd == 'test') alert(request.value);
     switch (request.cmd) {
@@ -507,6 +500,20 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
             });
             break;
         case 'getPageCount':
+            OBS = observeDOM($('#sold_container >div >div:last')[0], function(isLoading) {
+                if (isLoading) {
+                    console.log('page is loading');
+                } else {
+                    console.log('page is loaded');
+                    setTimeout(() => {
+                        let currentPageData = htmlToJson(getTable());
+                        console.log(`获取第${++pageIndex}页数据-------------------`)
+                        console.log(currentPageData);
+                        window.tableList = window.tableList.concat(currentPageData);
+                        getNextData();
+                    }, 300);
+                }
+            });
             window.taobaoFilters = getFilterStatus();
             getAllPageData();
             break;

@@ -7,7 +7,7 @@ let columns = [
     {"data": "href", "name": "href", title: '产品地址'},
     {"data": "pro_name", "name": "pro_name", title: '产品名称'},
     {"data": "color", "name": "color", title: '颜色分类'},
-    {"data": "product_num", "name": "product_num",title: '货号'},
+    {"data": "product_num", "name": "product_num", title: '货号'},
     {"data": "num", "name": "num", title: '购买数量'},
     {"data": "wangwang", "name": "wangwang", title: '旺旺'},
     {"data": "status", "name": "status", title: '状态'},
@@ -46,16 +46,16 @@ let totalData;
 function setTotal() {
     setTimeout(() => {
         let total = getCellVals([
-            {ids: 9, key: 'totalPrice'},
-            {ids: 10, key: 'totalPay'},
-            {ids: 12, key: 'totalPurchasePrice'},
-            {ids: 13, key: 'totalPurchaseExpress'},
-            {ids: 14, key: 'totalPurchaseBox'},
-            {ids: 15, key: 'totalProfit'},
+            {ids: 10, key: 'totalPrice'},
+            {ids: 11, key: 'totalPay'},
+            {ids: 13, key: 'totalPurchasePrice'},
+            {ids: 14, key: 'totalPurchaseExpress'},
+            {ids: 15, key: 'totalPurchaseBox'},
+            {ids: 16, key: 'totalProfit'},
         ]);
         totalData = total;
         let html = ` 
-                    <td colspan="9" style="text-align:right">合计：</td>
+                    <td colspan="10" style="text-align:right">合计：</td>
                     <td>${total.totalPrice}</td>
                     <td>${total.totalPay}</td>
                     <td colspan="2">${total.totalPurchasePrice}</td>
@@ -83,11 +83,13 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
 //     } catch (e) {
 //     }
     setTimeout(() => {
-        let data = request.content.tableList
+        let data = request.content.tableList;
+        let filters = request.content.taobaoFilters;
+        $('.filter_wrap').html(filters.join('<br>'));
         $('#downExcel').off().on('click', () => {
-            exportToExcel(data)
+            exportToExcel(data, filters, $('.countColumn input:checked').val())
         })
-        console.log(JSON.stringify(data));
+        // console.log(JSON.stringify(data));
         if (table) {
             table.clear().rows.add(data).draw();
             setTotal();
@@ -95,7 +97,7 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
         else {
             table = $('#example').DataTable({
                 columns: columns,
-                "iDisplayLength": 100,
+                "iDisplayLength": 1000,
                 "columnDefs": [
                     {
                         // The `data` parameter refers to the data for the cell (defined by the
@@ -159,14 +161,14 @@ function jsonToMap(jsonStr) {
     return new Map(JSON.parse(jsonStr));
 }
 
-function exportToExcel(data) {
+function exportToExcel(data, filters, countColumn) {
     var workbook = new ExcelJS.Workbook();
     workbook.creator = 'Paul Leger';
     workbook.lastModifiedBy = 'Paul Leger';
     workbook.created = new Date();
     workbook.modified = new Date();
     workbook.lastPrinted = new Date();
-    var worksheet = workbook.addWorksheet("Publications");
+    var worksheet = workbook.addWorksheet("卖出记录");
     worksheet.views = [
         {state: 'frozen', xSplit: 0, ySplit: 1}
     ];
@@ -175,36 +177,17 @@ function exportToExcel(data) {
         to: 'M1'
     };
     worksheet.properties.defaultRowHeight = 50;
-    // worksheet.columns = [
-    //     {header: 'Index', key: 'Index', width: 15},
-    //     {header: 'Title', key: 'title', width: 25, style: {alignment: {wrapText: true}}},
-    //     {header: 'Authors', key: 'authors', width: 20, style: {alignment: {wrapText: true}}},
-    //     {header: 'Journal/Conference', key: 'jc', width: 25, style: {alignment: {wrapText: true}}},
-    //     {header: 'Type', key: 'type', width: 12, style: {alignment: {wrapText: true}}},
-    //     {header: 'Year', key: 'year', width: 12, style: {numFmt: "0000"}},
-    //     {header: 'Month', key: 'month', width: 12},
-    //     {header: 'volume', key: 'volume', width: 12},
-    //     {header: 'number', key: 'number', width: 12},
-    //     {header: 'Pages', key: 'pages', width: 12},
-    //     {header: 'Location', key: 'location', width: 20, style: {alignment: {wrapText: true}}},
-    //     {header: 'doi', key: 'doi', width: 22, style: {alignment: {wrapText: true}}},
-    //     {header: 'affiliation', key: 'affiliation', width: 20, style: {alignment: {wrapText: true}}}
-    // ];
-    // var firstRow = worksheet.getRow(1);
-    // firstRow.font = {name: 'New Times Roman', family: 4, size: 10, bold: true, color: {argb: '80EF1C1C'}};
-    // firstRow.alignment = {vertical: 'middle', horizontal: 'center'};
-    // firstRow.height = 20;
     worksheet.columns = [
         {"key": "order_index", header: 'ID'},
-        {"key": "order_num", header: '订单号',width:18},
-        {"key": "order_time", header: '订单日期',width:20},
+        {"key": "order_num", header: '订单号', width: 18},
+        {"key": "order_time", header: '订单日期', width: 20},
         {"key": "img", header: '图片',},
-        {"key": "pro_name", header: '产品名称',width:45},
+        {"key": "pro_name", header: '产品名称', width: 45},
         {"key": "color", header: '颜色分类'},
         {"key": "product_num", header: '货号'},
         {"key": "num", header: '购买数量'},
-        {"key": "wangwang", header: '旺旺',width:11},
-        {"key": "status", header: '状态',width:11},
+        {"key": "wangwang", header: '旺旺', width: 11},
+        {"key": "status", header: '状态', width: 11},
         {"key": "price", header: '原价'},
         {"key": "pay", header: '实付'},
         {"key": "express", header: '快递'},
@@ -215,51 +198,71 @@ function exportToExcel(data) {
     ];
     worksheet.addRows(data);
     let list = []
-    // worksheet.getColumn('R').width = 10;
-    // worksheet.getColumn('R').eachCell({ includeEmpty: true },function(cell, rowNumber) {
-    //     if (rowNumber > 1) {
-    //         cell.width = 20;
-    //         cell.height = 20;
-    //     }
-    // });
     worksheet.eachRow(function(row, rowNumber) {
         if (rowNumber > 1) {
             row.height = 80;
-            let imgCell =row.getCell('img');
+            let imgCell = row.getCell('img');
             imgCell.value = '';
             imgCell.height = 80;
             imgCell.width = 80;
-            row.alignment = {vertical: 'middle', horizontal: 'center',wrapText: true}
+            row.alignment = {vertical: 'middle', horizontal: 'center', wrapText: true}
             // console.log('Row ' + rowNumber + ' = ' + JSON.stringify(row.values));
         }
     });
     worksheet.addRow({
-            "order_index": '-',
-            "order_num": "-",
-            "order_time": "-",
-            "img": "-",
-            "href": "-",
-            "pro_name": "-",
-            "color": "-",
+            // "order_index": '-',
+            // "order_num": "-",
+            // "order_time": "-",
+            // "img": "-",
+            // "href": "-",
+            // "pro_name": "-",
+            // "color": "-",
             "price": 0,
             "num": 0,
-            "wangwang": "-",
-            "status": "-",
+            // "wangwang": "-",
+            // "status": "-",
             "pay": 0,
             "express": 0,
-            "detailUrl": "-",
+            // "detailUrl": "-",
             "purchasePrice": 0,
             "purchaseExpress": 0,
             "purchaseBox": 0,
             "profit": 0,
         },
     )
-
-    setCount(worksheet,['price','num','pay','express','purchasePrice','purchaseExpress','purchaseBox','profit'])
-
+    setCount(worksheet, ['price', 'num', 'pay', 'express', 'purchasePrice', 'purchaseExpress', 'purchaseBox', 'profit'])
     data.map((item, ids) => {
         list.push(getImg(item.img));
     })
+    var worksheetCount = workbook.addWorksheet('统计');
+    worksheetCount.columns = [
+        {"key": "pro_name", header: '产品名称', width: 18},
+        {"key": "product_num", header: '货号', width: 18},
+        {"key": "count", header: '数量', width: 18},
+    ];
+    let countDataObj = {};
+    data.map((item) => {
+        if (countDataObj[item[countColumn]]) {
+            countDataObj[item[countColumn]].count += item.num;
+        } else {
+            countDataObj[item[countColumn]] = {
+                count: item.num,
+                pro_name: item.pro_name,
+                product_num: item.product_num,
+            }
+        }
+    });
+    let countDataList = [];
+    for (var item in countDataObj) {
+        countDataList.push(countDataObj[item])
+    }
+    worksheetCount.addRows(countDataList)
+    worksheetCount.addRow({
+            "product_num": 0,
+            "count": 0,
+        },
+    )
+    setCount(worksheetCount, ['product_num', 'count'])
     Promise.all(list).then((data) => {
         data.map((item, ids) => {
             var imageId = workbook.addImage({
@@ -270,21 +273,21 @@ function exportToExcel(data) {
         })
         var buff = workbook.xlsx.writeBuffer().then(function(data) {
             var blob = new Blob([data], {type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
-            saveAs(blob, "publications.xlsx");
+            saveAs(blob, `${filters.join('-')}.xlsx`);
         });
     }).catch((err) => {
         console.log(err)
     })
 }
-function setCount(worksheet, cellName) {
 
-    cellName.map((item)=>{
+function setCount(worksheet, cellName) {
+    cellName.map((item) => {
         let cell = worksheet.lastRow.getCell(item);
         let colAndRowIndex = cell.$col$row.split('$');
         cell.value = {formula: `SUM(${colAndRowIndex[1]}2:${colAndRowIndex[1] + (colAndRowIndex[2] - 1)})`}
     })
-
 }
+
 const image2base64 = (url, param) => {
     return new Promise(
         (resolve, reject) => {
@@ -321,7 +324,7 @@ function getImg(url) {
             .then(
                 (response) => {
                     resolve(response)
-                    console.log(response); //data:image/jpeg;base64,iVBORw0KGgoAAAANSwCAIA...
+                    // console.log(response); //data:image/jpeg;base64,iVBORw0KGgoAAAANSwCAIA...
                 }
             )
             .catch(
