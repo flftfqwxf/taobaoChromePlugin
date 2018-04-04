@@ -40,7 +40,7 @@ function getCellVals(tdIndexs) {
 }
 
 console.log('init preview');
-let table;
+let table, entryTable;
 let totalData;
 
 function setTotal() {
@@ -82,65 +82,67 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
 //         // $('#example').html('')
 //     } catch (e) {
 //     }
-    setTimeout(() => {
-        let data = request.content.tableList;
-        let filters = request.content.taobaoFilters;
-        $('.filter_wrap').html(filters.join('<br>'));
-        $('#downExcel').off().on('click', () => {
-            exportToExcel(data, filters, $('.countColumn input:checked').val())
-        })
-        // console.log(JSON.stringify(data));
-        if (table) {
-            table.clear().rows.add(data).draw();
-            setTotal();
-        }
-        else {
-            table = $('#example').DataTable({
-                columns: columns,
-                "iDisplayLength": 1000,
-                "columnDefs": [
-                    {
-                        // The `data` parameter refers to the data for the cell (defined by the
-                        // `data` option, which defaults to the column being worked with, in
-                        // this case `data: 0`.
-                        "render": function(data, type, row) {
-                            return `<img src="${data}" width="50" />`;
+    if (request.event === 'preView') {
+        setTimeout(() => {
+            let data = request.content.tableList;
+            let filters = request.content.taobaoFilters;
+            $('.filter_wrap').html(filters.join('<br>'));
+            $('#downExcel').off().on('click', () => {
+                exportToExcel(data, filters, $('.countColumn input:checked').val())
+            })
+            // console.log(JSON.stringify(data));
+            if (table) {
+                table.clear().rows.add(data).draw();
+                setTotal();
+            }
+            else {
+                table = $('#example').DataTable({
+                    columns: columns,
+                    "iDisplayLength": 1000,
+                    "columnDefs": [
+                        {
+                            // The `data` parameter refers to the data for the cell (defined by the
+                            // `data` option, which defaults to the column being worked with, in
+                            // this case `data: 0`.
+                            "render": function(data, type, row) {
+                                return `<img src="${data}" width="50" />`;
+                            },
+                            "targets": 3
                         },
-                        "targets": 3
-                    },
-                    {
-                        // The `data` parameter refers to the data for the cell (defined by the
-                        // `data` option, which defaults to the column being worked with, in
-                        // this case `data: 0`.
-                        "render": function(data, type, row) {
-                            return `<a href="${row.href}" target="_blank"  />${data}</a>`;
+                        {
+                            // The `data` parameter refers to the data for the cell (defined by the
+                            // `data` option, which defaults to the column being worked with, in
+                            // this case `data: 0`.
+                            "render": function(data, type, row) {
+                                return `<a href="${row.href}" target="_blank"  />${data}</a>`;
+                            },
+                            "targets": 5
                         },
-                        "targets": 5
-                    },
-                    {"visible": false, "targets": [4]}
-                ],
-                data: data,
-                rowsGroup:
-                    [// Always the array (!) of the column-selectors in specified order to which rows groupping is applied
-                        // (column-selector could be any of specified in https://datatables.net/reference/type/column-selector)
-                        'order_index:name',
-                        'order_num:name',
-                        'order_time:name',
-                        'wangwang:name',
-                        'express:name',
-                        'pay:name',
-                        'purchaseExpress:name',
-                        'purchaseBox:name',
-                        'status:name',
-                        'profit:name',
-                        // 0, 1, 2, 7,8, 10, 11, 12,13
+                        {"visible": false, "targets": [4]}
                     ],
-            });
-            setTotal()
-        }
-        uploadExcel();
-        // table.order([[0, 'desc']]).draw();
-    }, 300)
+                    data: data,
+                    rowsGroup:
+                        [// Always the array (!) of the column-selectors in specified order to which rows groupping is applied
+                            // (column-selector could be any of specified in https://datatables.net/reference/type/column-selector)
+                            'order_index:name',
+                            'order_num:name',
+                            'order_time:name',
+                            'wangwang:name',
+                            'express:name',
+                            'pay:name',
+                            'purchaseExpress:name',
+                            'purchaseBox:name',
+                            'status:name',
+                            'profit:name',
+                            // 0, 1, 2, 7,8, 10, 11, 12,13
+                        ],
+                });
+                setTotal()
+            }
+            uploadExcel();
+            // table.order([[0, 'desc']]).draw();
+        }, 300)
+    }
 });
 let excelCellIndex = {}
 
@@ -211,20 +213,10 @@ function exportToExcel(data, filters, countColumn) {
         }
     });
     worksheet.addRow({
-            // "order_index": '-',
-            // "order_num": "-",
-            // "order_time": "-",
-            // "img": "-",
-            // "href": "-",
-            // "pro_name": "-",
-            // "color": "-",
             "price": 0,
             "num": 0,
-            // "wangwang": "-",
-            // "status": "-",
             "pay": 0,
             "express": 0,
-            // "detailUrl": "-",
             "purchasePrice": 0,
             "purchaseExpress": 0,
             "purchaseBox": 0,
@@ -337,12 +329,12 @@ function getImg(url) {
     })
 }
 
-function handleFile(e) {
-}
-
 // if(opts.file && opts.file.addEventListener) opts.file.addEventListener('change', handleFile, false);
 function uploadExcel() {
-    $('#in_product').change(function() {
+    document.querySelector('#in_product').addEventListener('click', function(e) {
+        e.target.value = '';
+    })
+    $('#in_product').off().on('change', function() {
         var reader = new FileReader();
         reader.onload = function() {
             var arrayBuffer = this.result,
@@ -350,22 +342,47 @@ function uploadExcel() {
             var wb2 = new ExcelJS.Workbook();
             wb2.xlsx.load(array)
                 .then(function(wb2) {
-                    let dataArray = changeRowsToDict(wb2.getWorksheet(1));
-                    console.log(JSON.stringify(dataArray));
+                    let in_data = changeRowsToDict(wb2.getWorksheet(1));
+                    let in_columns = [
+                        {"data": "日期", "name": "日期", title: '日期'},
+                        {"data": "货号", "name": "货号", title: '货号'},
+                        {"data": "数量", "name": "数量", title: '数量'},
+                        {"data": "原价", "name": "原价", title: '原价'},
+                        {"data": "发货价", "name": "发货价", title: '发货价'},
+                        {"data": "快递费", "name": "快递费", title: '快递费'},
+                        {"data": "调货", "name": "调货", title: '调货'}
+                    ]
+                    setTimeout(() => {
+                        // console.log(JSON.stringify(data));
+                        if (entryTable) {
+                            entryTable.clear().rows.add(data).draw();
+                        }
+                        else {
+                            entryTable = $('#entryTable').DataTable({
+                                columns: in_columns,
+                                "iDisplayLength": 1000,
+                                data: in_data,
+                            });
+                        }
+                        //table插件bug，在初始化第二个table后，会对销售报表千万影响，需要重新计算总合
+                        setTotal();
+                        // table.order([[0, 'desc']]).draw();
+                    }, 300)
                 });
         }
         reader.readAsArrayBuffer(this.files[0]);
     })
 }
+
 /* 将所有的行数据转换为json */
-function changeRowsToDict(worksheet){
+function changeRowsToDict(worksheet) {
     let dataArray = [];
     let keys = [];
     worksheet.eachRow(function(row, rowNumber) {
-        if(rowNumber == 1){
+        if (rowNumber == 1) {
             keys = row.values;
         }
-        else{
+        else {
             // method1  ===============
             // let rowDict = cellValueToDict(keys, row.values);
             // dataArray.push(rowDict);
@@ -378,22 +395,29 @@ function changeRowsToDict(worksheet){
 }
 
 /* keys: {id,name,phone}, rowValue：每一行的值数组, 执行次数3次 */
-function cellValueToDict(keys,rowValue){
+function cellValueToDict(keys, rowValue) {
     let rowDict = {};
-    keys.forEach((value,index)=>{
+    keys.forEach((value, index) => {
         rowDict[value] = rowValue[index];
     });
     return rowDict;
 }
 
 /* keys: {id,name,phone}, rowValue：每一行的值数组， 执行次数3次 */
-function cellValueToDict2(keys,row){
+function cellValueToDict2(keys, row) {
     let data = {};
-    row.eachCell(function(cell, colNumber){
-        var value = cell.value;
-        if(typeof value == "object") value = value.text;
-        data[keys[colNumber]]  = value;
-    });
+    row.eachCell(function(cell, colNumber) {
+            var value = cell.value;
+            if (ExcelJS.ValueType.Date === cell.type) {
+                let d = new Date(cell);
+                value = d.getFullYear() + '/' + (d.getMonth() + 1) + '/' + d.getDate()
+            } else if (typeof value == "object") {
+                value = value.text;
+            }
+            data[keys[colNumber]] = value;
+        }
+    );
     return data;
 }
-uploadExcel()
+
+uploadExcel();
