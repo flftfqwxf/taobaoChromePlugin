@@ -421,3 +421,20 @@ function cellValueToDict2(keys, row) {
 }
 
 uploadExcel();
+function getAuth(callback) {
+    chrome.identity.getAuthToken({'interactive': true}, function(token) {
+        console.log(token);
+        if (callback) {
+            callback(token)
+        }
+        // 使用令牌。
+    });
+}
+function saveToGoogleDrive() {
+    let bg = chrome.extension.getBackgroundPage();
+    getAuth((token)=>{
+        console.log(token)
+    })
+
+}
+saveToGoogleDrive()

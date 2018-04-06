@@ -52,6 +52,8 @@ function sendMessageToContentScript(message, callback) {
     });
 }
 
+
+
 // chrome.storage.local.set({'pageDate': 1111})
 // chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
 //     // if (callback) callback(tabs.length ? tabs[0].id : null);
