@@ -421,20 +421,43 @@ function cellValueToDict2(keys, row) {
 }
 
 uploadExcel();
-function getAuth(callback) {
-    chrome.identity.getAuthToken({'interactive': true}, function(token) {
-        console.log(token);
-        if (callback) {
-            callback(token)
-        }
-        // 使用令牌。
+
+async function saveToGoogleDrive() {
+    let bg = chrome.extension.getBackgroundPage();
+    let content = await bg.getFileContent();
+    console.log(content);
+    var wb2 = new ExcelJS.Workbook();
+    wb2.xlsx.load(content)
+        .then(function(wb2) {
+            let in_data = changeRowsToDict(wb2.getWorksheet(1));
+            let in_columns = [
+                {"data": "日期", "name": "日期", title: '日期'},
+                {"data": "货号", "name": "货号", title: '货号'},
+                {"data": "数量", "name": "数量", title: '数量'},
+                {"data": "原价", "name": "原价", title: '原价'},
+                {"data": "发货价", "name": "发货价", title: '发货价'},
+                {"data": "快递费", "name": "快递费", title: '快递费'},
+                {"data": "调货", "name": "调货", title: '调货'}
+            ]
+            setTimeout(() => {
+                // console.log(JSON.stringify(data));
+                if (entryTable) {
+                    entryTable.clear().rows.add(data).draw();
+                }
+                else {
+                    entryTable = $('#entryTable').DataTable({
+                        columns: in_columns,
+                        "iDisplayLength": 1000,
+                        data: in_data,
+                    });
+                }
+                //table插件bug，在初始化第二个table后，会对销售报表千万影响，需要重新计算总合
+                setTotal();
+                // table.order([[0, 'desc']]).draw();
+            }, 300)
+        }).catch(err => {
+        alert(err)
     });
 }
-function saveToGoogleDrive() {
-    let bg = chrome.extension.getBackgroundPage();
-    getAuth((token)=>{
-        console.log(token)
-    })
 
-}
 saveToGoogleDrive()
