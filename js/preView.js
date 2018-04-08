@@ -430,15 +430,15 @@ async function saveToGoogleDrive() {
     wb2.xlsx.load(content)
         .then(function(wb2) {
             let in_data = changeRowsToDict(wb2.getWorksheet(1));
-            let in_columns = [
-                {"data": "日期", "name": "日期", title: '日期'},
-                {"data": "货号", "name": "货号", title: '货号'},
-                {"data": "数量", "name": "数量", title: '数量'},
-                {"data": "原价", "name": "原价", title: '原价'},
-                {"data": "发货价", "name": "发货价", title: '发货价'},
-                {"data": "快递费", "name": "快递费", title: '快递费'},
-                {"data": "调货", "name": "调货", title: '调货'}
-            ]
+            let in_columns=[];
+            Object.keys(in_data).map((item)=>{
+                in_columns.push({
+                    'data':item,
+                    'name':item,
+                    'title':item
+                })
+            });
+
             setTimeout(() => {
                 // console.log(JSON.stringify(data));
                 if (entryTable) {
