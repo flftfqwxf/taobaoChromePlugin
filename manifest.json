@@ -43,7 +43,7 @@
     }
   ],
   "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAilZHJLduQN52Yw0M+aTSJ9grhgZcfPj67b/jQXF4PTI6jLgJ6HUVgltOLhYc8btNjhwdVIPObaSSf+KaKksX7BwXtUAQrD7jeANzUa160mKoJTI/JKlPVV3iSf07GzWnKMkN8nUseE97WLp4lJS3aDe8ZqonBbeMNxcdhOS57vh8VkP9M/9J+Fue+0Qdn5rY4wd84UGJAi4MQOwjy8+ZNiQBPMiBPfBKZVNrz50j7CF2YJT+zXFuMUHmHKB5wwrS0j3j14IhE+Psek6/LsPnZpMJet14PB1IFe1BMlqZkKA5ZH9Q/sCkKJxWgmKM4UrliFHnIW99zcadHbHNAX6ikQIDAQAB",
-  "content_security_policy": "script-src 'self' 'unsafe-eval'; object-src 'self'",
+  "content_security_policy": "script-src 'self' 'unsafe-eval'  https://apis.google.com; object-src 'self'",
   // 权限申请
   "permissions": [
     "declarativeContent",

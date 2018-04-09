@@ -74,7 +74,8 @@ async function getAuthAndSend(opts) {
     let token = await getAuth();
     let retry = true;
     opts.headers = Object.assign({}, opts.headers, {
-        Authorization: 'Bearer ' + token
+        Authorization: 'Bearer ' + token,
+        "content-type": "application/json"
     })
     if (opts.type === 'GET') {
         let queryStr = []
@@ -88,8 +89,11 @@ async function getAuthAndSend(opts) {
             opts.url += '?' + queryStr
         }
         opts.body = null
+    } else {
+        opts.data = JSON.stringify(opts.data);
     }
     return await fetch(opts.url, {
+        method:opts.type,
         headers: opts.headers,
         body: opts.data,
         responseType: opts.responseType
@@ -149,6 +153,79 @@ async function getFileContent(url = 'https://www.googleapis.com/drive/v3/files')
     //     resolve(oReq.response)
     // };
     // oReq.send();
+}
+
+async function ceateExcelToGoogleDrive(url = 'https://www.googleapis.com/upload/drive/v3/files') {
+    let opts = {
+        url: url + '/' + files.files[0].id + '?alt=media',
+        dataType: 'json',
+        data: {
+            resource: {
+                'name': 'New-excel.xlsx',
+                'mimeType': gdocs.data.mimeType.xlsx
+            }
+        }
+    }
+    let content = await getAuthAndSend(opts)
+    if (!content.error) {
+        return content;
+    }
+    alert(content.error.message);
+    return false;
+}
+
+async function updateFileToGoogleDrive(file, fileId) {
+    var metadata = {
+        mimeType: gdocs.data.mimeType.xlsx,
+        name: file.name,
+        fields: 'id',
+        body: file.content
+    }
+    let opts = {
+        url: 'https://www.googleapis.com/upload/drive/v3/files/' + fileId,
+        type: 'PATCH',
+        body: file.content,
+        resource: metadata
+    }
+    let content = await getAuthAndSend(opts)
+    return content;
+}
+
+async function createFileToGoogleDrive(file) {
+    var metadata = {
+        mimeType: gdocs.data.mimeType.xlsx,
+        name: file.name
+    }
+    if (file.parents) {
+        metadata.parents = file.parents;
+    }
+    let opts = {
+        url: 'https://www.googleapis.com/upload/drive/v3/files?uploadType=media',
+        type: 'POST',
+        data: metadata
+    }
+    let content = await getAuthAndSend(opts)
+    return content;
+}
+
+async function saveFileToGoogleDrive(file, done) {
+    let res;
+    if (file.parents) {
+        metadata.parents = file.parents;
+    }
+    if (file.id) { //just update
+        res = await updateFileToGoogleDrive(file, fileId);
+        if (res) {
+            console.log('File just updated', res.result);
+            return;
+        }
+    } else {
+        let res = await  createFileToGoogleDrive(file);
+        if (res) {
+            res = await updateFileToGoogleDrive(file, res.result.id);
+            console.log(res)
+        }
+    }
 }
 
 var gdocs = {

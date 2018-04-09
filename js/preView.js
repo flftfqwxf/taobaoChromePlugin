@@ -19,6 +19,7 @@ let columns = [
     {"data": "purchaseBox", "name": "purchaseBox", title: '纸箱费'},
     {"data": "profit", "name": "profit", title: '利润'},
 ]
+const BG = chrome.extension.getBackgroundPage();
 
 function getCellVals(tdIndexs) {
     let returnVal = {}, val;
@@ -86,9 +87,13 @@ chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
         setTimeout(() => {
             let data = request.content.tableList;
             let filters = request.content.taobaoFilters;
+            let bg = chrome.extension.getBackgroundPage();
             $('.filter_wrap').html(filters.join('<br>'));
             $('#downExcel').off().on('click', () => {
                 exportToExcel(data, filters, $('.countColumn input:checked').val())
+            })
+            $('#saveExcel').off().on('click', () => {
+                exportToExcel(data, filters, $('.countColumn input:checked').val(), true)
             })
             // console.log(JSON.stringify(data));
             if (table) {
@@ -164,7 +169,7 @@ function jsonToMap(jsonStr) {
     return new Map(JSON.parse(jsonStr));
 }
 
-function exportToExcel(data, filters, countColumn) {
+function exportToExcel(data, filters, countColumn, saveToGoogle) {
     var workbook = new ExcelJS.Workbook();
     workbook.creator = 'Paul Leger';
     workbook.lastModifiedBy = 'Paul Leger';
@@ -266,7 +271,15 @@ function exportToExcel(data, filters, countColumn) {
         })
         var buff = workbook.xlsx.writeBuffer().then(function(data) {
             var blob = new Blob([data], {type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
-            saveAs(blob, `${filters.join('-')}.xlsx`);
+            if (saveToGoogle) {
+                BG.saveFileToGoogleDrive({
+                    name: `${filters.join('-')}.xlsx`,
+                    content: blob
+                }, function() {
+                })
+            } else {
+                saveAs(blob, `${filters.join('-')}.xlsx`);
+            }
         });
     }).catch((err) => {
         console.log(err)
@@ -343,22 +356,24 @@ function uploadExcel() {
             wb2.xlsx.load(array)
                 .then(function(wb2) {
                     let in_data = changeRowsToDict(wb2.getWorksheet(1));
-                    let in_columns = [
-                        {"data": "日期", "name": "日期", title: '日期'},
-                        {"data": "货号", "name": "货号", title: '货号'},
-                        {"data": "数量", "name": "数量", title: '数量'},
-                        {"data": "原价", "name": "原价", title: '原价'},
-                        {"data": "发货价", "name": "发货价", title: '发货价'},
-                        {"data": "快递费", "name": "快递费", title: '快递费'},
-                        {"data": "调货", "name": "调货", title: '调货'}
-                    ]
+                    let in_columns = [];
+                    if (in_data.length === 0) {
+                        return;
+                    }
+                    Object.keys(in_data[0]).map((val) => {
+                        in_columns.push({
+                            'data': val,
+                            'name': val,
+                            'title': val
+                        })
+                    });
                     setTimeout(() => {
                         // console.log(JSON.stringify(data));
                         if (entryTable) {
-                            entryTable.clear().rows.add(data).draw();
+                            entryTable.clear().rows.add(in_data).draw();
                         }
                         else {
-                            entryTable = $('#entryTable').DataTable({
+                            entryTable = $('#purchaseTable').DataTable({
                                 columns: in_columns,
                                 "iDisplayLength": 1000,
                                 data: in_data,
@@ -430,19 +445,21 @@ async function saveToGoogleDrive() {
     wb2.xlsx.load(content)
         .then(function(wb2) {
             let in_data = changeRowsToDict(wb2.getWorksheet(1));
-            let in_columns=[];
-            Object.keys(in_data).map((item)=>{
+            let in_columns = [];
+            if (in_data.length === 0) {
+                return;
+            }
+            Object.keys(in_data[0]).map((val) => {
                 in_columns.push({
-                    'data':item,
-                    'name':item,
-                    'title':item
+                    'data': val,
+                    'name': val,
+                    'title': val
                 })
             });
-
             setTimeout(() => {
                 // console.log(JSON.stringify(data));
                 if (entryTable) {
-                    entryTable.clear().rows.add(data).draw();
+                    entryTable.clear().rows.add(in_data).draw();
                 }
                 else {
                     entryTable = $('#entryTable').DataTable({
@@ -460,4 +477,5 @@ async function saveToGoogleDrive() {
     });
 }
 
-saveToGoogleDrive()
+saveToGoogleDrive();
+
