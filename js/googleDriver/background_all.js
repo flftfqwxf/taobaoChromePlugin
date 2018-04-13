@@ -1758,6 +1758,7 @@ gdocs.Client.prototype.sendRequestJson = function(a, b, c, d, e, g, f, h) {
     this.sendRequest(a, b, c, d, e, g, f, h)
 };
 gdocs.Client.authAndSend_ = function(a, b, c, d, e, g, f, h, n) {
+
     chrome.identity.getAuthToken({interactive: !0}, function(m) {
         if (chrome.runtime.lastError) gdlog.infoLastErr("Client.authAndSend", "getAuthToken"), h(chrome.runtime.lastError.message || "N/A"); else {
             var p = n ? n : [gdocs.HttpStatus.OK], k = new XMLHttpRequest;
