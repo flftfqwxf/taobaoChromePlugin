@@ -1,14 +1,10 @@
-chrome.runtime.onInstalled.addListener(function() {
-    console.log('background')
-    window.localStorage.setItem('background', 1111);
-});
 /**
  * 创建或更新成功执行的动作
  * @param evt
  * @param content
  * @private
  */
-var _tabUpdatedCallback = function(evt, content) {
+window._tabUpdatedCallback = function(evt, content) {
     return function(newTab) {
         if (content) {
             setTimeout(function() {
@@ -21,7 +17,7 @@ var _tabUpdatedCallback = function(evt, content) {
         }
     };
 };
-var _openFileAndRun = function(file, txt) {
+window._openFileAndRun = function(file, txt) {
     chrome.tabs.query({windowId: chrome.windows.WINDOW_ID_CURRENT}, function(tabs) {
         var isOpened = false;
         var tabId;
@@ -88,8 +84,6 @@ async function getAuthAndSend(opts) {
             opts.url += '?' + queryStr
         }
         opts.body = null
-    } else {
-        // opts.data = JSON.stringify(opts.data);
     }
     return await fetch(opts.url, {
         method: opts.type,
@@ -97,10 +91,14 @@ async function getAuthAndSend(opts) {
         body: opts.data,
         responseType: opts.responseType
     }).then(res => {
-            if (opts.responseType === 'arraybuffer') {
-                return res.arrayBuffer();
+            if (opts.handleUploadResponse_) {
+                opts.handleUploadResponse_(res, opts);
+            } else {
+                if (opts.responseType === 'arraybuffer') {
+                    return res.arrayBuffer();
+                }
+                return res.json()
             }
-            return res.json()
         }
     ).then((res) => {
         return res
@@ -119,7 +117,7 @@ async function getAuthAndSend(opts) {
     });
 }
 
-async function getFiles(url = 'https://www.googleapis.com/drive/v3/files') {
+window.getFiles = async function(url = 'https://www.googleapis.com/drive/v3/files') {
     let opts = {
         url,
         data: {
@@ -130,8 +128,7 @@ async function getFiles(url = 'https://www.googleapis.com/drive/v3/files') {
     let files = await getAuthAndSend(opts)
     return files;
 }
-
-async function getFileContent(url = 'https://www.googleapis.com/drive/v3/files') {
+window.getFileContent = async function(url = 'https://www.googleapis.com/drive/v3/files') {
     let files = await getFiles();
     let opts = {
         url: url + '/' + files.files[0].id + '?alt=media',
@@ -153,8 +150,7 @@ async function getFileContent(url = 'https://www.googleapis.com/drive/v3/files')
     // };
     // oReq.send();
 }
-
-async function updateFileToGoogleDrive(file, fileId) {
+window.updateFileToGoogleDrive = async function(file, fileId) {
     var metadata = {
         mimeType: gdocs.data.mimeType.xlsx,
         name: file.name,
@@ -170,8 +166,7 @@ async function updateFileToGoogleDrive(file, fileId) {
     let content = await getAuthAndSend(opts)
     return content;
 }
-
-async function createFileToGoogleDrive(file) {
+window.createFileToGoogleDrive = async function(file) {
     // var metadata = {
     //     mimeType: gdocs.data.mimeType.xlsx,
     //     name: file.name
@@ -182,227 +177,36 @@ async function createFileToGoogleDrive(file) {
     let opts = {
         url: 'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable',
         type: 'post',
-        data: file.name,
+        data: JSON.stringify({"name": file.name}),
         headers: {
             'X-Upload-Content-Type': gdocs.data.mimeType.xlsx,
             "content-type": 'application/json; charset=UTF-8',
             'X-Upload-Content-Length': file.content.size
-        }, handleFirstResponse: function() {
-            if (b.status != gdocs.HttpStatus.OK) {
-                var c = gdocs.msgutil.createXhrErrMsg(b);
-                gdlog.info("ResumableUploader.handleFirstResponse", "responseText:" + b.responseText + " errMsg:" + c);
-                this.callback_(null, new gdocs.UploadStatus(this.dataSource_, gdocs.UploadStatus.State.FAILURE, c))
-            } else this.uploadUrl_ = b.getResponseHeader("Location"), this.sendUploadRequest_(0, a)
-        }, handleRequestFailure: function() {
-            if (b.status == gdocs.HttpStatus.CREATED || b.status == gdocs.HttpStatus.OK) this.handleCreated_(b); else {
-                goog.asserts.assert(b.status == gdocs.HttpStatus.RESUME_INCOMPLETE);
-                var c = b.getResponseHeader("Range");
-                goog.isDefAndNotNull(c) ? (c = c ? Number(c.match(gdocs.ResumableUploader.RANGE_END_)[1]) + 1 : 0, this.sendUploadRequest_(c, a)) : (gdlog.info("ResumableUploader.handleResponse", "No Range respose. url:" + this.uploadUrl_ + " errMsg:No Range response in header"),
-                    this.callback_(null, new gdocs.UploadStatus(this.dataSource_, gdocs.UploadStatus.State.FAILURE, "No Range response in header")))
+        },
+        handleUploadResponse_(res, opts) {
+            let loc = res.headers.get('location');
+            let uploadOpts = {
+                url: loc,
+                type: 'put',
+                data: file.content,
+                headers: {
+                    "content-type": gdocs.data.mimeType.xlsx,
+                    'Content-Length': file.content.size
+                }
             }
+            if (res.status == 201 || res.status == 200) {
+                getAuthAndSend(uploadOpts)
+            } else {
+            }
+        },
+        handleRequestFailure_() {
+            this.callback_(null, new gdocs.UploadStatus(this.dataSource_, gdocs.UploadStatus.State.FAILURE, a))
         }
     }
     let content = await getAuthAndSend(opts)
     return content;
 }
-
-class UploadStatus {
-    constructor(dataSource, state, c, d, e, title, docId, iconUrl) {
-        this.dataSource_ = dataSource;
-        this.state_ = state;
-        this.errorMsg_ = c || "";
-        this.sentBytes_ = d || 0;
-        this.openUrl_ = e || "";
-        this.title_ = title || "";
-        this.docId_ = docId || "";
-        this.iconUrl_ = iconUrl || ""
-    }
-
-    StatusResponse: {CANCEL: "cancel", PROCEED: "proceed"}
-    State: {FAILURE: "failure", IN_PROGRESS: "inProgress", SUCCESS: "success"}
-
-    getUploadRatio() {
-        return 0 == this.sentBytes_ ? 0 : this.sentBytes_ / this.dataSource_.getSize()
-    }
-
-    isComplete() {
-        return this.state_ != this.State.IN_PROGRESS
-    }
-
-    isSuccess() {
-        return this.state_ == this.State.SUCCESS
-    };
-}
-
-class ResumableUploader {
-    constructor(client, dataSource, folderInfo, chunkSize, extraHeaders, callback) {
-        this.client_ = client;
-        this.dataSource_ = dataSource;
-        this.folderInfo_ = folderInfo;
-        this.chunkSize_ = chunkSize;
-        this.extraHeaders_ = extraHeaders || {};
-        this.callback_ = callback;
-        this.uploadUrl_ = "";
-        this.RANGE_END_ = /\d+-(\d+)/,
-    }
-
-    startResumableUpload(UploadContentType) {
-        UploadContentType = this.patchContentType_(UploadContentType);
-        let headers = gdocs.DocList.addHeaders({"X-Upload-Content-Type": UploadContentType, "X-Upload-Content-Length": this.dataSource_.getSize()}), c;
-        for (item in this.extraHeaders_) headers[item] = this.extraHeaders_[item];
-        this.dataSource_.getDriveFilename();
-        c = {uploadType: "resumable"};
-        this.dataSource_.shouldConvert() && (c.convert = !0);
-        var d = {title: this.dataSource_.getDriveFilename()};
-        this.folderInfo_ && (d.parents = [{kind: "drive#fileLink", id: this.folderInfo_.folderId}]);
-        gdlog.info("ResumableUploader.sendFirstPost", "Starting upload. headers:" + gdlog.prettyPrint(b) + "\nparams:" + gdlog.prettyPrint(c) + "\nJSON:" + gdlog.prettyPrint(d));
-        this.client_.sendRequestJson("POST", gdocs.DocList.Feed.UPLOAD, c, b, d, goog.bind(this.handleFirstResponse_, this, a), goog.bind(this.handleRequestFailure_, this), [gdocs.HttpStatus.OK])
-    }
-
-    handleFirstResponse_(a, b) {
-        if (b.status != gdocs.HttpStatus.OK) {
-            var c = gdocs.msgutil.createXhrErrMsg(b);
-            gdlog.info("ResumableUploader.handleFirstResponse", "responseText:" + b.responseText + " errMsg:" + c);
-            this.callback_(null, new gdocs.UploadStatus(this.dataSource_, gdocs.UploadStatus.State.FAILURE, c))
-        } else this.uploadUrl_ = b.getResponseHeader("Location"), this.sendUploadRequest_(0, a)
-    }
-
-    handleUploadResponse_(a, b) {
-        if (b.status == gdocs.HttpStatus.CREATED || b.status == gdocs.HttpStatus.OK) this.handleCreated_(b); else {
-            goog.asserts.assert(b.status == gdocs.HttpStatus.RESUME_INCOMPLETE);
-            var c = b.getResponseHeader("Range");
-            goog.isDefAndNotNull(c) ? (c = c ? Number(c.match(gdocs.ResumableUploader.RANGE_END_)[1]) + 1 : 0, this.sendUploadRequest_(c, a)) : (gdlog.info("ResumableUploader.handleResponse", "No Range respose. url:" + this.uploadUrl_ + " errMsg:No Range response in header"),
-                this.callback_(null, new gdocs.UploadStatus(this.dataSource_, gdocs.UploadStatus.State.FAILURE, "No Range response in header")))
-        }
-    }
-
-    handleRequestFailure_() {
-        this.callback_(null, new gdocs.UploadStatus(this.dataSource_, gdocs.UploadStatus.State.FAILURE, a))
-    }
-
-    sendUploadRequest_(a, b) {
-        var c = this.dataSource_.getSize(), d = Math.min(c, a + this.chunkSize_) - 1,
-            e = new gdocs.UploadStatus(this.dataSource_, gdocs.UploadStatus.State.IN_PROGRESS, null, Math.max(0, a - 1));
-        (e = this.callback_(null, e)) && e == gdocs.UploadStatus.StatusResponse.CANCEL ? (d = chrome.i18n.getMessage("UPLOAD_CANCELED"), this.callback_(null, new gdocs.UploadStatus(this.dataSource_, gdocs.UploadStatus.State.FAILURE, d))) : (c = {
-            "Content-Type": b, "Content-Range": "bytes " + a + "-" +
-            d + "/" + c
-        }, d = this.dataSource_.getData(a, d + 1), gdlog.info("ResumableUploader.handleResponse", "Sending " + c["Content-Range"]), this.client_.sendRequest("PUT", this.uploadUrl_, null, c, d, goog.bind(this.handleUploadResponse_, this, b), goog.bind(this.handleRequestFailure_, this), [gdocs.HttpStatus.CREATED, gdocs.HttpStatus.OK, gdocs.HttpStatus.RESUME_INCOMPLETE]))
-    }
-
-    handleCreated_(a) {
-        gdlog.info("ResumableUploader.handleCreated", "Completed with status:" + a.status);
-        var b = JSON.parse(a.responseText);
-        this.callback_(a.responseText, new gdocs.UploadStatus(this.dataSource_, gdocs.UploadStatus.State.SUCCESS, null, this.dataSource_.getSize(), b.alternateLink, b.title, b.id, b.iconLink))
-    }
-
-    patchContentType_(a) {
-        var b = a;
-        if (b) {
-            var c = b.indexOf(";");
-            0 <= c && (b = b.substring(0, c));
-            b = b.toLowerCase();
-            0 == b.indexOf(gdocs.MimeType.X_PDF) && (b = gdocs.MimeType.PDF)
-        } else b = gdocs.MimeType.OCTET_STREAM;
-        b != a && gdlog.info("ResumableUploader.patchContentType", "Changing Content-Type from " + a + " to " + b);
-        return b
-    }
-}
-
-class UploadPageState {
-    constructor(a) {
-        this.defaultFilename_ = defaultFilename;
-        this.filename_ = "";
-        this.percentage_ = 0;
-        this.fatalMsg_ = this.uploadPage_ = null;
-        this.fatalMsgHasHtml_ = false;
-    }
-
-    fatal(a) {
-        gdlog.info("UploadPageState.fatal", a);
-        this.fatalMsg_ = this.fatalMsg_ ? this.fatalMsg_ + ("; " + a) : a;
-        this.uploadPage_ && this.uploadPage_.fatal(this.fatalMsg_, this.fatalMsgHasHtml_)
-    }
-
-    fatalHtml(a) {
-        this.fatalMsgHasHtml_ = true;
-        this.fatal(a)
-    }
-
-    hasFailed() {
-        return !!this.fatalMsg_
-    }
-
-    isCancel() {
-        return this.uploadPage_ && this.uploadPage_.isCancel()
-    }
-
-    clearCancel() {
-        this.uploadPage_ && this.uploadPage_.clearCancel()
-    }
-
-    setUploadPage(a) {
-        this.uploadPage_ = uploadPage_;
-        this.fatalMsg_ ? this.uploadPage_.fatal(this.fatalMsg_, this.fatalMsgHasHtml_) : this.updateFilename_()
-    }
-
-    setPercent(percentage_) {
-        this.percentage_ = percentage_;
-        this.uploadPage_ && this.uploadPage_.setPercent(this.percentage_)
-    }
-
-    setFilename = function(filename_) {
-        this.filename_ = filename_;
-        this.uploadPage_ && this.updateFilename_()
-    }
-
-    getFilename() {
-        return this.filename_ ? this.filename_ : this.defaultFilename_
-    }
-
-    updateFilename_ = function() {
-        var filename = this.filename_ ? chrome.i18n.getMessage("DOWNLOAD_KNOWN_NAME", this.filename_) : chrome.i18n.getMessage("DOWNLOAD_UNKNOWN_NAME");
-        this.uploadPage_.updateProgressText(filename)
-    }
-}
-
-class DocList {
-    constructor(client_) {
-        this.client_ = client_;
-        this.MAJOR_VERSION_PATTERN_=/\d+\.\d+/;
-        this.MAJOR_VERSION_=chrome.runtime.getManifest().version.match(gdocs.DocList.MAJOR_VERSION_PATTERN_)[0]
-        this.X_USER_AGENT_="google-docschromeextension-" + gdocs.DocList.MAJOR_VERSION_;
-        this.Feed = {
-            ABOUT: "https://www.googleapis.com/drive/v3/about",
-            FILES: "https://www.googleapis.com/drive/v3/files",
-            UPLOAD: "https://www.googleapis.com/upload/drive/v3/files",
-            USER_INFO: "https://www.googleapis.com/userinfo/v3/me"
-        }
-    }
-    addHeaders(headers) {
-        headers = headers|| {};
-        headers["X-User-Agent"] = gdocs.DocList.X_USER_AGENT_;
-        return headers;
-    }
-}
-
-
-
-gdocs.DocList.prototype.loadMetadata = function(a, b) {
-    this.client_.sendRequestJson("GET", gdocs.DocList.Feed.USER_INFO, {fields: "email"}, gdocs.DocList.addHeaders(), null, goog.bind(this.handleMetadataResults_, this, a), b)
-};
-gdocs.DocList.prototype.handleMetadataResults_ = function(a, b) {
-    var c = JSON.parse(b.responseText);
-    a(c.email)
-};
-gdocs.DocList.prototype.renameFile = function(a, b, c, d) {
-    a = {title: a};
-    this.client_.sendRequestJson("PUT", gdocs.DocList.Feed.FILES + "/" + b, {fileId: b}, gdocs.DocList.addHeaders(), a, c, d)
-};
-gdocs.DocList.prototype.trashFile = function(a, b, c) {
-    this.client_.sendRequest("POST", gdocs.DocList.Feed.FILES + "/" + a + "/trash", {fileId: a}, gdocs.DocList.addHeaders(), null, b, c)
-};
-
-async function saveFileToGoogleDrive(file, done) {
+window.saveFileToGoogleDrive = async function saveFileToGoogleDrive(file, done) {
     let res;
     if (file.parents) {
         metadata.parents = file.parents;
@@ -421,7 +225,6 @@ async function saveFileToGoogleDrive(file, done) {
         }
     }
 }
-
 var gdocs = {
     AnimatedBrowserIcon: function(a, b, c) {
         this.browserIconPath_ = a;

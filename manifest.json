@@ -13,6 +13,8 @@
     "48": "img/icon.png",
     "128": "img/icon.png"
   },
+  "default_locale": "zh_CN",
+
   // 浏览器右上角图标设置，browser_action、page_action、app必须三选一
   "browser_action": {
     "default_icon": "img/icon.png",
@@ -64,6 +66,7 @@
     // 可以通过executeScript或者insertCSS访问的网站
     "identity"
   ],
+//  "api_key":"AIzaSyCobgXJ1PC2LvlYIRi3FWmcBlw7c7A9cvA",
   "oauth2": {
     "client_id": "650123272595-19q3920bg3etbvfqodeuomf0g21ei5ci.apps.googleusercontent.com",
     "scopes": [
@@ -81,12 +84,12 @@
   //  },
   "background": {
     // 2种指定方式，如果指定JS，那么会自动生成一个背景页
-    //    "page": "background.html"
-    "scripts": [
-      "js/background.js",
-      "js/common/jquery-2.1.3.min.js",
-      "/js/common/jquery-ajax-blob-arraybuffer.js"
-
-    ]
+        "page": "template/background.html"
+//    "scripts": [
+//      "js/background.js",
+//      "js/common/jquery-2.1.3.min.js",
+//      "/js/common/jquery-ajax-blob-arraybuffer.js"
+//
+//    ]
   }
 }

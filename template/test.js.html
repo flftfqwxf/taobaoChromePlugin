@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+</head>
+<script type="text/javascript" src="../js/common/jquery-1.9.1.min.js"></script>
+
+<script type="text/javascript" src="../js/common/jquery.gdrive-1.2.0.min.js"></script>
+</head>
+<body>
+<button id="apiDriveAuthenticate" type="submit">Start Google Drive Authentication</button>
+<div id="gDriveAuthorization"></div>
+<script>
+    //gdrive options with authentication and authorization level requested
+    var gdrive_pluginOptions = {
+        authentication: {
+            clientID: "650123272595-19q3920bg3etbvfqodeuomf0g21ei5ci.apps.googleusercontent.com",
+            keyAPI: "AIzaSyCobgXJ1PC2LvlYIRi3FWmcBlw7c7A9cvA"
+        },
+        scopes: ["https://www.googleapis.com/auth/drive", "https://www.googleapis.com/auth/drive.file", "https://www.googleapis.com/auth/userinfo.email"]
+    }
+    //initialize gdrive
+    $(function() {
+        //initialize
+        $("#apiDriveAuthenticate").gDrive(gdrive_pluginOptions);
+        //listen to the event
+        $('body').bind('DrivePlugin_loaded',
+            function(e, data) {
+                var auth = $.gDrive.authorized();
+                if (auth) {
+                    $("#apiDriveAuthenticate").hide();
+                    $("#gDriveAuthorization").css("color", "green");
+                    $("#gDriveAuthorization").text("Authorized");
+                }
+                else {
+                    $("#gDriveAuthorization").css("color", "orange");
+                    $("#gDriveAuthorization").text("Not Authorized");
+                }
+            });
+    });
+</script>
+</body>
+</html>
