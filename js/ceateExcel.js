@@ -1,4 +1,6 @@
 (function($) {
+    const BG = chrome.extension.getBackgroundPage().BG;
+
     function getCurrentTabId(callback) {
         chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
             if (callback) callback(tabs.length ? tabs[0].id : null);
@@ -46,9 +48,8 @@
     }
 
     $('#createExcelBtn').click(() => {
-        let bg = chrome.extension.getBackgroundPage();
         sendMessageToContentScript({cmd: 'createExcel'}, function(response) {
-            bg._openFileAndRun('preView', response);
+            BG.Utils.openFileAndRun('preView', response);
             // console.log('来自content的回复：' + response);
             // exportToExcel(response, '报表')
         });
