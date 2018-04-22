@@ -47,6 +47,9 @@ export class GDriver {
             body: opts.data,
             responseType: opts.responseType
         }).then(res => {
+                if (res.status !== 200) {
+                    return Promise.reject(res)
+                }
                 if (opts.handleUploadResponse_) {
                     opts.handleUploadResponse_(res, opts);
                 } else {
@@ -59,88 +62,98 @@ export class GDriver {
         ).then((res) => {
             return res
         }).catch((err) => {
-            alert(err);
-            // if (this.status === 401 && retry) {
-            // 该状态可能表示缓存的访问令牌无效，
-            // 使用新的令牌再试一次。
-            retry = false;
-            chrome.identity.removeCachedAuthToken(
-                {'token': token},
-                function() {
-                    return this.getAuthAndSend(opts)
-                });
-            // }
-            return err;
-        });
+                if (err.status === 401 && retry) {
+                    // 该状态可能表示缓存的访问令牌无效，
+                    //使用新的令牌再试一次。
+                    retry = false;
+                    chrome.identity.removeCachedAuthToken(
+                        {'token': token},
+                        function() {
+                            return this.getAuthAndSend(opts)
+                        });
+                    // }
+                    return err;
+                } else {
+                    return err.json().then((val) => {
+                        alert(JSON.stringify(val))
+                    })
+                }
+            }
+        );
     }
 
-    async getFiles(parent, url = 'https://www.googleapis.com/drive/v3/files') {
+    async getFiles(parents, url = 'https://www.googleapis.com/drive/v3/files') {
         let opts = {
             url,
             data: {
                 corpora: 'user',
-                q: `mimeType='${this.gdocs.data.mimeType.xlsx}'`,
-                parents: parent
+                q: `trashed=false and  mimeType='${this.gdocs.data.mimeType.xlsx}'`,
+                parents: parents
             }
         }
-        if (parent) {
-            opts.data.parents = parent
+        if (parents) {
+            opts.data.parents = parents
         }
         let files = await this.getAuthAndSend(opts)
         return this.checkError(files);
     }
 
-    async getFileByName(fileName, parent, url = 'https://www.googleapis.com/drive/v3/files') {
-        let q = {
-            mimeType: this.gdocs.data.mimeType.xlsx
-        };
-        if (fileName) {
-            q.name = fileName
-        }
-        let opts = {
-            url,
+    async getFilesByName(opts) {
+        opts = Object.assign({}, {name: '', parents: null, mimeType: this.gdocs.data.mimeType.xlsx, autoCreate: false}, opts)
+        let sendOpts = {
+            url: this.gdocs.DocList.Feed.FILES,
             data: {
                 corpora: 'user',
-                q: $.param(q)
+                q: `trashed=false and name='${opts.name}' and mimeType='${opts.mimeType}'`
             }
         }
-        if (parent) {
-            opts.data.parents = parent
+        if (opts.parents) {
+            sendOpts.data.q += ` and parents='${opts.parents}' `;
         }
-        let files = await this.getAuthAndSend(opts)
-        return this.checkError(files);
+        let files = await this.getAuthAndSend(sendOpts)
+        files = this.checkError(files);
+        if (files.length === 0 && opts.autoCreate) {
+            files = this.createFile(opts)
+        }
+        return files;
+    }
+
+    async getFileByName(opts) {
+        opts = Object.assign({}, {name: '', parents: null, mimeType: this.gdocs.data.mimeType.xlsx, autoCreate: false}, opts)
+        let files = await this.getFilesByName(opts)
+        if (files.length > 1) {
+            alert('有多个同名的文件存在，默认读取返回的第一个文件');
+        }
+        return files[0]
     }
 
     /**
-     * 通过名字获取对应文件夹信息
+     * 获取文件夹
+     * @param folderName
+     * @param {Boolean} autoCreate 如果未找到文夹，并为true时，则自动创建
      * @param url
      * @returns {Promise<*>}
      */
-    async getFolderByName(folderName, url = 'https://www.googleapis.com/drive/v3/files') {
+    async getFolderByName(folderName, autoCreate, url = 'https://www.googleapis.com/drive/v3/files') {
         let opts = {
             url,
             data: {
                 corpora: 'user',
-                q: {
-                    mimeType: this.gdocs.data.mimeType.FOLDER,
-                    name: folderName
-                }
+                q: `trashed=false and mimeType='${this.gdocs.data.mimeType.FOLDER}' and name='${folderName}'`
             }
         }
         let files = await this.getAuthAndSend(opts);
-        return this.checkError(files);
-    }
-
-    objectToQuerystring(obj) {
-        if ($.isPlainObject(obj)) {
-            return Object.keys(obj).reduce(function(str, key, i) {
-                var delimiter, val;
-                key = encodeURIComponent(key);
-                val = encodeURIComponent(obj[key]);
-                return [str, delimiter, key, '=', val].join('');
-            }, '');
+        let folders = this.checkError(files);
+        if (folders.length === 0) {
+            folders = await  BG.GDriver.createFolder({
+                name: folderName
+            })
+            if (folders.length === 0) {
+                alert('创建文件夹失败');
+                return [];
+            }
         }
-        return obj;
+        return folders;
     }
 
     /**
@@ -157,51 +170,28 @@ export class GDriver {
         return files.files;
     }
 
-    async getFileContent(parent, url = 'https://www.googleapis.com/drive/v3/files') {
-        let files = await this.getFiles(parent);
-        if (files && files) {
+    async getFileContent(opts) {
+        opts = Object.assign({}, {name: '', parents: null, mimeType: this.gdocs.data.mimeType.xlsx, autoCreate: false}, opts)
+        let files = await this.getFileByName(opts);
+        if (!files.error) {
+            return files;
         }
-        let opts = {
-            url: url + '/' + files.files[0].id + '?alt=media',
-            dataType: 'binary',
-            responseType: 'arraybuffer'
-        }
-        let content = await this.getAuthAndSend(opts)
-        if (!content.error) {
-            return content;
-        }
-        alert(content.error.message);
+        alert(files.error.message);
         return false;
     }
 
-    async updateFileToGoogleDrive(file, fileId) {
-        var metadata = {
-            mimeType: this.gdocs.data.mimeType.xlsx,
-            name: file.name,
-            fields: 'id',
-            body: file.content
-        }
-        let opts = {
-            url: 'https://www.googleapis.com/upload/drive/v3/files/' + fileId,
-            type: 'PATCH',
-            body: file.content,
-            resource: metadata
-        }
-        let content = await this.getAuthAndSend(opts)
-        return content;
-    }
-
-    async createFileToGoogleDrive(file) {
+    async uploadFile(file) {
         var metadata = {
             name: file.name
         }
         if (file.parents) {
             metadata.parents = file.parents;
         }
+        let uploadOpts = this.gdocs.DocList.Feed.UPLOAD(file.id)
         let _this = this;
         let opts = {
-            url: 'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable',
-            type: 'post',
+            url: uploadOpts.url,
+            type: uploadOpts.type,
             data: JSON.stringify(metadata),
             headers: {
                 'X-Upload-Content-Type': _this.gdocs.data.mimeType.xlsx,
@@ -228,25 +218,79 @@ export class GDriver {
                 alert('upload error');
             }
         }
+        if (file.id) {
+            opts.url = `https://www.googleapis.com/upload/drive/v3/files/${file.id}?uploadType=resumable`
+        }
         let content = await this.getAuthAndSend(opts)
         return this.checkError(content);
     }
 
-    async saveFileToGoogleDrive(file, done) {
+    async createFolder(folder = {name: 'taobao', parents: null}) {
+        var metadata = {
+            name: folder.name,
+            mimeType: this.gdocs.data.mimeType.FOLDER
+        }
+        if (folder.parents) {
+            metadata.parents = folder.parents;
+        }
+        let _this = this;
+        let opts = {
+            url: this.gdocs.DocList.Feed.FILES,
+            type: 'post',
+            data: JSON.stringify(metadata),
+            headers: {
+                "content-type": 'application/json; charset=UTF-8',
+            }
+        }
+        let content = await this.getAuthAndSend(opts)
+        if (content.error) {
+            alert(content.error.message);
+            return '';
+        }
+        return content;
+    }
+
+    async createFile(opts) {
+        opts = Object.assign({}, {name: 'taobao', parents: null, mimeType: this.gdocs.data.mimeType.xlsx}, opts)
+        var metadata = {
+            name: opts.name,
+            mimeType: opts.mimeType
+        }
+        if (opts.parents) {
+            metadata.parents = [opts.parents];
+        }
+        let _this = this;
+        let sendPpts = {
+            url: this.gdocs.DocList.Feed.FILES,
+            type: 'post',
+            data: JSON.stringify(metadata),
+            headers: {
+                "content-type": 'application/json; charset=UTF-8',
+            }
+        }
+        let content = await this.getAuthAndSend(sendPpts)
+        if (content.error) {
+            alert(content.error.message);
+            return '';
+        }
+        return content;
+    }
+
+    async saveFile(file, done) {
         let res;
         if (file.parents) {
             metadata.parents = file.parents;
         }
         if (file.id) { //just update
-            res = await updateFileToGoogleDrive(file, fileId);
+            res = await this.updateFileToGoogleDrive(file, fileId);
             if (res) {
                 console.log('File just updated', res.result);
                 return;
             }
         } else {
-            let res = await  createFileToGoogleDrive(file);
+            let res = await  this.createFileToGoogleDrive(file);
             if (res) {
-                res = await updateFileToGoogleDrive(file, res.result.id);
+                res = await this.updateFileToGoogleDrive(file, res.result.id);
                 console.log(res)
             }
         }
@@ -325,7 +369,12 @@ export class Gdocs {
         this.DocList.Feed = {
             ABOUT: "https://www.googleapis.com/drive/v3/about",
             FILES: "https://www.googleapis.com/drive/v3/files",
-            UPLOAD: "https://www.googleapis.com/upload/drive/v3/files",
+            UPLOAD: (id) => {
+                return {
+                    url: `https://www.googleapis.com/upload/drive/v3/files${id ? '/' + id : ''}?uploadType=resumable`,
+                    type: id ? 'patch' : 'post'
+                }
+            },
             USER_INFO: "https://www.googleapis.com/userinfo/v3/me"
         };
     }

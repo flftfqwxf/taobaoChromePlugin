@@ -436,14 +436,15 @@ function cellValueToDict2(keys, row) {
 
 uploadExcel();
 
-async function saveToGoogleDrive() {
-    let folder = await BG.GDriver.getFolderByName('taobao'), parent;
-    if (folder.files && folder.files.length === 1) {
-        parent = folder.files[0].id
-    } else if (folder.length > 1) {
-        alert('存在多个taobao名的文件夹，请删除多余的文件夹后重试')
+async function initGoogleDrive() {
+    let folders = await BG.GDriver.getFolderByName('taobao', true), parents = null;
+    if (folders.length > 1) {
+        alert('存在多个taobao名的文件夹，默认选择返回的第一个文件夹');
     }
-    let content = await BG.GDriver.getFileContent(parent);
+    if (folders.length === 1) {
+        parents = folders[0].id
+    }
+    let content = await BG.GDriver.getFileContent({autoCreate: true, name: 'product', parents: parents});
     console.log(content);
     var wb2 = new ExcelJS.Workbook();
     wb2.xlsx.load(content)
@@ -481,5 +482,5 @@ async function saveToGoogleDrive() {
     });
 }
 
-saveToGoogleDrive();
+initGoogleDrive();
 
