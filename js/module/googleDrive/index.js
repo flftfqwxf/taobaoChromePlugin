@@ -134,7 +134,7 @@ export class GDriver {
      * @param url
      * @returns {Promise<*>}
      */
-    async getFolderByName(folderName, autoCreate, url = 'https://www.googleapis.com/drive/v3/files') {
+    async getFolderByName(folderName, autoCreate, onlyFirst, url = 'https://www.googleapis.com/drive/v3/files') {
         let opts = {
             url,
             data: {
@@ -152,6 +152,9 @@ export class GDriver {
                 alert('创建文件夹失败');
                 return [];
             }
+        } else if (folders.length > 1 && onlyFirst) {
+            alert(`存在多个名为<${folderName}>的文件夹，默认选择返回的第一个文件夹`);
+            folders = folders[0];
         }
         return folders;
     }
@@ -171,12 +174,22 @@ export class GDriver {
     }
 
     async getFileContent(opts) {
-        opts = Object.assign({}, {name: '', parents: null, mimeType: this.gdocs.data.mimeType.xlsx, autoCreate: false}, opts)
+        opts = Object.assign({}, {name: '', parents: null, responseType: 'json', mimeType: this.gdocs.data.mimeType.xlsx, autoCreate: false}, opts)
         let files = await this.getFileByName(opts);
-        if (!files.error) {
-            return files;
+        if (!files || !files.id) {
+            alert('未找到文件');
+            return false;
         }
-        alert(files.error.message);
+        let sendOpts = {
+            url: opts.url + '/' + files.id + '?alt=media',
+            dataType: 'binary',
+            responseType: opts.responseType
+        }
+        let content = await this.getAuthAndSend(sendOpts)
+        if (!content.error) {
+            return content;
+        }
+        alert(content.error.message);
         return false;
     }
 
@@ -282,7 +295,7 @@ export class GDriver {
             metadata.parents = file.parents;
         }
         if (file.id) { //just update
-            res = await this.updateFileToGoogleDrive(file, fileId);
+            res = await this.uploadFile(file);
             if (res) {
                 console.log('File just updated', res.result);
                 return;
