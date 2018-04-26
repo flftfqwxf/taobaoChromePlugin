@@ -56,7 +56,11 @@ export class GDriver {
                     if (opts.responseType === 'arraybuffer') {
                         return res.arrayBuffer();
                     }
-                    return res.json()
+                    try {
+                        return res.json()
+                    } catch (e) {
+                        return res.text();
+                    }
                 }
             }
         ).then((res) => {
@@ -134,7 +138,7 @@ export class GDriver {
      * @param url
      * @returns {Promise<*>}
      */
-    async getFolderByName(folderName, autoCreate, onlyFirst, url = 'https://www.googleapis.com/drive/v3/files') {
+    async getFoldersByName(folderName, autoCreate, url = 'https://www.googleapis.com/drive/v3/files') {
         let opts = {
             url,
             data: {
@@ -144,7 +148,7 @@ export class GDriver {
         }
         let files = await this.getAuthAndSend(opts);
         let folders = this.checkError(files);
-        if (folders.length === 0) {
+        if (Array.isArray(folders) && folders.length === 0) {
             folders = await  BG.GDriver.createFolder({
                 name: folderName
             })
@@ -152,9 +156,28 @@ export class GDriver {
                 alert('创建文件夹失败');
                 return [];
             }
-        } else if (folders.length > 1 && onlyFirst) {
+        }
+        if (Array.isArray(folders) && folders.length > 1) {
             alert(`存在多个名为<${folderName}>的文件夹，默认选择返回的第一个文件夹`);
             folders = folders[0];
+        }
+        return folders;
+    }
+
+    /**
+     * 获取文件夹
+     * @param folderName
+     * @param {Boolean} autoCreate 如果未找到文夹，并为true时，则自动创建
+     * @param url
+     * @returns {Promise<*>}
+     */
+    async getFolderByName(folderName, autoCreate, url = 'https://www.googleapis.com/drive/v3/files') {
+        let folders = await this.getFoldersByName(folderName, autoCreate, url);
+        if (Array.isArray(folders)) {
+            if (folders.length > 1) {
+                alert(`存在多个名为<${folderName}>的文件夹，默认选择返回的第一个文件夹`);
+            }
+            return folders[0]
         }
         return folders;
     }
@@ -181,8 +204,8 @@ export class GDriver {
             return false;
         }
         let sendOpts = {
-            url: opts.url + '/' + files.id + '?alt=media',
-            dataType: 'binary',
+            url: this.gdocs.DocList.Feed.FILES + '/' + files.id + '?alt=media',
+            // dataType: 'binary',
             responseType: opts.responseType
         }
         let content = await this.getAuthAndSend(sendOpts)

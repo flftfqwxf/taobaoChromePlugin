@@ -5,9 +5,12 @@ export class Store {
     }
 
     async initGoogleDrive() {
-        let folder = await this.GDriver.getFolderByName('taobao', true, true), parents = null;
+        let folder = await this.GDriver.getFolderByName('taobao', true), parents = null;
         parents = folder.id;
-        let content = await this.GDriver.getFileContent({name: 'product', autoCreate: true, parents: parents, mimeType: this.GDriver.gdocs.data.mimeType.JSON});
+        let content = await this.GDriver.getFileContent({name: 'product.json', autoCreate: true, parents: parents, mimeType: this.GDriver.gdocs.data.mimeType.JSON});
+        console.log('内容：product:' + content);
+        if (content) {
+        }
     }
 
     async initTable(name, parents, model) {
