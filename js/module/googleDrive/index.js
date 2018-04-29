@@ -47,6 +47,7 @@ export class GDriver {
             body: opts.data,
             responseType: opts.responseType
         }).then(res => {
+                let data = null;
                 if (res.status !== 200) {
                     return Promise.reject(res)
                 }
@@ -56,15 +57,20 @@ export class GDriver {
                     if (opts.responseType === 'arraybuffer') {
                         return res.arrayBuffer();
                     }
-                    try {
-                        return res.json()
-                    } catch (e) {
-                        return res.text();
-                    }
+                    data = res.text();
                 }
+                return data
             }
         ).then((res) => {
-            return res
+            let data = res;
+            if (typeof(res) === 'string') {
+                try {
+                    data = JSON.parse(res);
+                } catch (e) {
+                    data = res;
+                }
+            }
+            return data
         }).catch((err) => {
                 if (err.status === 401 && retry) {
                     // 该状态可能表示缓存的访问令牌无效，
@@ -78,6 +84,10 @@ export class GDriver {
                     // }
                     return err;
                 } else {
+                    if (err.message) {
+                        alert(err.message);
+                        return false;
+                    }
                     return err.json().then((val) => {
                         alert(JSON.stringify(val))
                     })
@@ -117,7 +127,7 @@ export class GDriver {
         let files = await this.getAuthAndSend(sendOpts)
         files = this.checkError(files);
         if (files.length === 0 && opts.autoCreate) {
-            files = this.createFile(opts)
+            files = await this.createFile(opts);
         }
         return files;
     }
@@ -209,7 +219,7 @@ export class GDriver {
             responseType: opts.responseType
         }
         let content = await this.getAuthAndSend(sendOpts)
-        if (!content.error) {
+        if (content && !content.error) {
             return content;
         }
         alert(content.error.message);
@@ -309,7 +319,7 @@ export class GDriver {
             alert(content.error.message);
             return '';
         }
-        return content;
+        return [content];
     }
 
     async saveFile(file, done) {
