@@ -219,11 +219,11 @@ export class GDriver {
             responseType: opts.responseType
         }
         let content = await this.getAuthAndSend(sendOpts)
-        if (content && !content.error) {
-            return content;
+        if (content && content.error) {
+            alert(content.error.message);
+            return false;
         }
-        alert(content.error.message);
-        return false;
+        return content;
     }
 
     async uploadFile(file) {
