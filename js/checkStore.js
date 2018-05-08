@@ -26,7 +26,7 @@
             'H51443252': 0,
             'H51443353': 1,
             'H70400485': 1,
-            'H31504097': 1,
+            'H31504097': 0,
             'H51443056': 1,
             'H51442862': 1,
             'H51443352': 2,
@@ -59,7 +59,9 @@
                 },
                 {
                     url: 'trade/itemlist/list_sold_items.htm',
-                    el: 'class^="ml-mod__container" >div > p > a >span:eq(1)'
+                    el: $('div[class^="ml-mod__container"]').each(function() {
+                        return $('div:eq(1) >p:first >a span:eq(1)', this)
+                    })
                 }
             ]
             let _this = this;
