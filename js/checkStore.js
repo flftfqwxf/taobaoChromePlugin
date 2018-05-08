@@ -56,6 +56,10 @@
                 {
                     url: 'auction/merchandise/auction_list.htm',
                     el: '.item-title-area >a'
+                },
+                {
+                    url: 'trade/itemlist/list_sold_items.htm',
+                    el: 'class^="ml-mod__container" >div > p > a >span:eq(1)'
                 }
             ]
             let _this = this;
