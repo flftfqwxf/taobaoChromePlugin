@@ -1,12 +1,11 @@
-import indexedDB from '../../module/indexedDB/indexedDB';
+import indexedDB from './module/indexedDB/indexedDB';
 
 export class Store {
     constructor() {
-        this.GDriver = chrome.extension.getBackgroundPage().BG.GDriver;
-        this.initGoogleDrive();
+        this.initDB()
     }
 
-    async initGoogleDrive() {
+    async addProduct() {
         let folder = await this.GDriver.getFolderByName('taobao', true), parents = null;
         parents = folder.id;
         let content = await this.GDriver.getFileContent({name: 'product.json', autoCreate: true, parents: parents, mimeType: this.GDriver.gdocs.data.mimeType.JSON});
@@ -16,15 +15,7 @@ export class Store {
         this.initDB();
     }
 
-    async initTable(name, parents, model) {
-        let product = await this.GDriver.getFileByName({name: 'product', parents: parents});
-        if (product) {
-            let content = await this.GDriver.getFileContent({name: 'product', parents: parents});
-            if (!content) {
-                // this.GDriver.uploadFile()
-            }
-        }
-    }
+
 
     async initDB() {
         let db = new indexedDB('taobaoStore', 'product', '++id,product_num,product_group_id,product_group_name,product_name,product_price,purchase_price,product_color,product_img')

@@ -53,7 +53,20 @@
             // console.log('来自content的回复：' + response);
             // exportToExcel(response, '报表')
         });
-
+    })
+    $('#adminProduct').click(() => {
+        sendMessageToContentScript({cmd: 'adminProduct'}, function(response) {
+            BG.Utils.openFileAndRun('adminProduct', response);
+            // console.log('来自content的回复：' + response);
+            // exportToExcel(response, '报表')
+        });
+    })
+    $('#addProduct').click(() => {
+        sendMessageToContentScript({cmd: 'addProduct'}, function(response) {
+            BG.Utils.openFileAndRun('addProduct', response);
+            // console.log('来自content的回复：' + response);
+            // exportToExcel(response, '报表')
+        });
     })
     $('#getPageCount').click(() => {
         // chrome.storage.local.get((items) => {
@@ -69,7 +82,7 @@
         if (request.cmd === 'loaded') {
             let tableList = request.tableList;
             $('#pageCount').html(tableList.length);
-            let filters=request.taobaoFilters;
+            let filters = request.taobaoFilters;
             $('.filter_wrap').html(filters.join('<br>'));
             sendResponse(200)
         }
