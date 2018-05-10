@@ -1,4 +1,4 @@
-import indexedDB from '../../module/indexedDB/indexedDB';
+import indexedDB from '../../module/indexedDB/indexedDB.js';
 
 export class Store {
     constructor() {
