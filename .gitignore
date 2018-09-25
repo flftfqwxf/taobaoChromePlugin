@@ -5,3 +5,6 @@
 .DS_Store
 js/.DS_Store
 rrr
+_locales/
+js/page/product/
+template/tt.js
